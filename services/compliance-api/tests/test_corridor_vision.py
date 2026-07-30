@@ -168,3 +168,46 @@ def test_preview_parsed_corridor_widths_missing_api_key(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "OPENAI_API_KEY environment variable is not set"
+
+
+def test_confirm_parsed_corridor_widths(client, tmp_path, monkeypatch, auth_headers):
+    _configure_paths(monkeypatch, tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+
+    project_id = client.post(
+        "/api/v1/projects",
+        json={"name": "Corridor Vision Confirm Project"},
+        headers=auth_headers,
+    ).json()["id"]
+
+    upload_response = client.post(
+        f"/api/v1/projects/{project_id}/drawings",
+        files={"file": ("floor-plan.pdf", _make_test_pdf(), "application/pdf")},
+        data={"type": "architectural"},
+        headers=auth_headers,
+    )
+    drawing_id = upload_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/drawings/{drawing_id}/pages/1/parse-corridors/confirm",
+        json={
+            "callouts": [
+                {
+                    "label": "Main corridor",
+                    "width_mm": 1200.0,
+                    "approximate_location": "center of page",
+                    "length": 18.5,
+                }
+            ]
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["drawing_id"] == drawing_id
+    assert body["page_number"] == 1
+    assert len(body["created"]) == 1
+    assert body["created"][0]["project_id"] == project_id
+    assert body["created"][0]["clear_width"] == 1200.0
+    assert body["created"][0]["length"] == 18.5

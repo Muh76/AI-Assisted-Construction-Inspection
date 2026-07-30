@@ -27,6 +27,8 @@ dev = ["pytest", "httpx"]
 seed-example = "scripts.seed_example:main"
 seed-regulations = "scripts.seed_regulations:main"
 audit-rules = "scripts.audit_rules:main"
+validate-extraction = "scripts.validate_extraction:main"
+full-pipeline-check = "scripts.full_pipeline_check:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

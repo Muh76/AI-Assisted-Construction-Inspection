@@ -60,6 +60,23 @@ class CorridorVisionPreviewResponse(BaseModel):
     callouts: list[CorridorWidthCalloutPreviewRow]
 
 
+class CorridorVisionConfirmRow(BaseModel):
+    label: str
+    width_mm: float
+    approximate_location: str
+    length: float
+
+
+class CorridorVisionConfirmRequest(BaseModel):
+    callouts: list[CorridorVisionConfirmRow]
+
+
+class CorridorVisionConfirmResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    created: list[CorridorRead]
+
+
 class DoorSchedulePreviewRow(BaseModel):
     door_number: str
     width: float

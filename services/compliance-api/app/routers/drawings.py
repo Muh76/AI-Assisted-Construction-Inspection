@@ -1,14 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.config import get_repo_root
 from app.db import get_db
-from app.models import Door, Drawing, Room
+from app.models import Corridor, Door, Drawing, Room
 from app.parsing.corridor_vision import parse_corridor_width_callouts
 from app.parsing.door_schedule import extract_door_schedule
 from app.parsing.page_image import render_drawing_page
 from app.parsing.raw_extract import extract_text
 from app.parsing.room_schedule import extract_room_schedule
 from app.schemas import (
+    CorridorRead,
+    CorridorVisionConfirmRequest,
+    CorridorVisionConfirmResponse,
     CorridorVisionPreviewResponse,
     CorridorWidthCalloutPreviewRow,
     DoorScheduleConfirmRequest,
@@ -108,6 +113,82 @@ def render_drawing_page_image(
         drawing_id=drawing_id,
         page_number=page_number,
         file_path=file_path,
+    )
+
+
+@router.get("/{drawing_id}/pages/{page_number}/image")
+def get_drawing_page_image(
+    drawing_id: int,
+    page_number: int,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    _get_drawing_or_404(drawing_id, db)
+
+    if page_number < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="page_number must be at least 1",
+        )
+
+    image_path = get_repo_root() / f"data/processed/{drawing_id}/page_{page_number}.png"
+    if not image_path.is_file():
+        try:
+            render_drawing_page(drawing_id, page_number, db)
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+        except ValueError as exc:
+            message = str(exc)
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if "not found" in message
+                else status.HTTP_400_BAD_REQUEST
+            )
+            raise HTTPException(status_code=status_code, detail=message) from exc
+        image_path = get_repo_root() / f"data/processed/{drawing_id}/page_{page_number}.png"
+
+    if not image_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rendered page image not found for drawing {drawing_id} page {page_number}",
+        )
+
+    return FileResponse(image_path, media_type="image/png")
+
+
+@router.post(
+    "/{drawing_id}/pages/{page_number}/parse-corridors/confirm",
+    response_model=CorridorVisionConfirmResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def confirm_parsed_corridor_widths(
+    drawing_id: int,
+    page_number: int,
+    payload: CorridorVisionConfirmRequest,
+    db: Session = Depends(get_db),
+) -> CorridorVisionConfirmResponse:
+    drawing = _get_drawing_or_404(drawing_id, db)
+    created_corridors: list[Corridor] = []
+
+    for row in payload.callouts:
+        corridor = Corridor(
+            project_id=drawing.project_id,
+            clear_width=row.width_mm,
+            length=row.length,
+        )
+        db.add(corridor)
+        created_corridors.append(corridor)
+
+    db.commit()
+    for corridor in created_corridors:
+        db.refresh(corridor)
+
+    return CorridorVisionConfirmResponse(
+        drawing_id=drawing_id,
+        page_number=page_number,
+        created=[CorridorRead.model_validate(corridor) for corridor in created_corridors],
     )
 
 
