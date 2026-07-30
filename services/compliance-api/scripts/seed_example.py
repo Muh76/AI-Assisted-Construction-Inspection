@@ -1,11 +1,41 @@
 """Seed the local dev database with a sample compliance project."""
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 
+from app.auth.security import hash_password
 from app.db import SessionLocal
-from app.models import Corridor, Door, Exit, FireProtectionItem, FireProtectionItemType, Project, Room
+from app.models import (
+    Corridor,
+    Door,
+    Exit,
+    FireProtectionItem,
+    FireProtectionItemType,
+    Project,
+    Room,
+    User,
+)
 
 SAMPLE_PROJECT_NAME = "Riverside Office Fit-Out"
+SEED_USER_EMAIL = "seed@example.com"
+SEED_USER_PASSWORD = "seed-password-change-me"
+
+
+def _get_or_create_seed_user(db) -> User:
+    user = db.scalar(select(User).where(User.email == SEED_USER_EMAIL))
+    if user is not None:
+        return user
+
+    user = User(
+        email=SEED_USER_EMAIL,
+        hashed_password=hash_password(SEED_USER_PASSWORD),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db.add(user)
+    db.flush()
+    print(f"Created seed user id={user.id}: {SEED_USER_EMAIL}")
+    return user
 
 
 def seed() -> None:
@@ -19,7 +49,9 @@ def seed() -> None:
             print(f"Sample project already exists (id={existing.id}). Skipping seed.")
             return
 
-        project = Project(name=SAMPLE_PROJECT_NAME)
+        owner = _get_or_create_seed_user(db)
+
+        project = Project(name=SAMPLE_PROJECT_NAME, owner_id=owner.id)
         db.add(project)
         db.flush()
 
@@ -106,6 +138,7 @@ def seed() -> None:
         db.commit()
 
         print(f"Seeded project id={project.id}: {SAMPLE_PROJECT_NAME}")
+        print(f"  Owner: {owner.email} (id={owner.id})")
         print(f"  Rooms: {reception.name}, {private_office.name}, {meeting_room.name}")
         print("  Doors: 2 x 860 mm clear width")
         print("  Corridors: 1 x 1100 mm clear width, 18.5 m length")

@@ -23,7 +23,9 @@ class Project(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
+    owner: Mapped["User"] = relationship(back_populates="projects")
     drawings: Mapped[list["Drawing"]] = relationship(back_populates="project")
     rooms: Mapped[list["Room"]] = relationship(back_populates="project")
     corridors: Mapped[list["Corridor"]] = relationship(back_populates="project")
@@ -149,3 +151,5 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    projects: Mapped[list["Project"]] = relationship(back_populates="owner")

@@ -15,6 +15,7 @@ class ProjectRead(BaseModel):
 
     id: int
     name: str
+    owner_id: int
 
 
 class DrawingCreate(BaseModel):

@@ -4,9 +4,20 @@ from app.rules.runner import run_all_rules
 
 
 def test_run_all_rules_returns_results(db_session):
-    from app.models import Corridor, Door, Project, Room
+    from datetime import UTC, datetime
 
-    project = Project(name="Runner Test")
+    from app.auth.security import hash_password
+    from app.models import Corridor, Door, Project, Room, User
+
+    user = User(
+        email="runner@example.com",
+        hashed_password=hash_password("test-password"),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    project = Project(name="Runner Test", owner_id=user.id)
     db_session.add(project)
     db_session.flush()
 

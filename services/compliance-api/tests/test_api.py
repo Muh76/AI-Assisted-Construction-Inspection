@@ -1,3 +1,6 @@
+from tests.conftest import register_and_login
+
+
 def test_create_project_and_room(client, auth_headers):
     project_response = client.post(
         "/api/v1/projects",
@@ -5,7 +8,9 @@ def test_create_project_and_room(client, auth_headers):
         headers=auth_headers,
     )
     assert project_response.status_code == 201
-    project_id = project_response.json()["id"]
+    project_body = project_response.json()
+    project_id = project_body["id"]
+    assert project_body["owner_id"] > 0
 
     room_response = client.post(
         "/api/v1/rooms",
@@ -264,3 +269,18 @@ def test_upload_drawing_project_not_found(client, tmp_path, monkeypatch, auth_he
 def test_protected_route_requires_auth(client):
     response = client.get("/api/v1/projects")
     assert response.status_code == 401
+
+
+def test_user_cannot_access_other_users_project(client):
+    headers_a = register_and_login(client, "user-a@example.com", "password-a")
+    headers_b = register_and_login(client, "user-b@example.com", "password-b")
+
+    project_b_id = client.post(
+        "/api/v1/projects",
+        json={"name": "User B Project"},
+        headers=headers_b,
+    ).json()["id"]
+
+    response = client.get(f"/api/v1/projects/{project_b_id}", headers=headers_a)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"

@@ -8,17 +8,22 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.config import get_data_raw_dir
 from app.db import get_db
-from app.models import Drawing, DrawingType, Project
+from app.models import Drawing, DrawingType, Project, User
 from app.reports.pdf import build_compliance_pdf
 from app.schemas import ComplianceReport, DrawingRead, ProjectCreate, ProjectRead
 from app.services.compliance import build_compliance_report
+from app.services.ownership import get_owned_project
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
-def create_project(payload: ProjectCreate, db: Session = Depends(get_db)) -> Project:
-    project = Project(**payload.model_dump())
+def create_project(
+    payload: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Project:
+    project = Project(name=payload.name, owner_id=current_user.id)
     db.add(project)
     db.commit()
     db.refresh(project)
@@ -26,19 +31,22 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)) -> Pro
 
 
 @router.get("", response_model=list[ProjectRead])
-def list_projects(db: Session = Depends(get_db)) -> list[Project]:
-    return list(db.scalars(select(Project)).all())
+def list_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Project]:
+    return list(
+        db.scalars(select(Project).where(Project.owner_id == current_user.id)).all()
+    )
 
 
 @router.get("/{project_id}/compliance/export")
 def export_project_compliance_pdf(
     project_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
+    project = get_owned_project(db, project_id, current_user)
     report = build_compliance_report(project_id, db)
     pdf_bytes = build_compliance_pdf(report, project.name)
     filename = f"compliance-report-project-{project_id}.pdf"
@@ -54,11 +62,9 @@ def export_project_compliance_pdf(
 def get_project_compliance(
     project_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ComplianceReport:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
+    get_owned_project(db, project_id, current_user)
     return build_compliance_report(project_id, db)
 
 
@@ -110,11 +116,12 @@ async def upload_drawing(
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
-def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return project
+def get_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Project:
+    return get_owned_project(db, project_id, current_user)
 
 
 @router.put("/{project_id}", response_model=ProjectRead)
@@ -122,10 +129,9 @@ def update_project(
     project_id: int,
     payload: ProjectCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Project:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    project = get_owned_project(db, project_id, current_user)
 
     for field, value in payload.model_dump().items():
         setattr(project, field, value)
@@ -136,10 +142,11 @@ def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, db: Session = Depends(get_db)) -> None:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    project = get_owned_project(db, project_id, current_user)
     db.delete(project)
     db.commit()
