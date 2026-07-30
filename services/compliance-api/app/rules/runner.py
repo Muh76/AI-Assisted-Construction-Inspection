@@ -14,6 +14,7 @@ def _load_project_data(project_id: int, db: Session) -> dict | None:
             selectinload(Project.rooms).selectinload(Room.doors),
             selectinload(Project.corridors),
             selectinload(Project.exits),
+            selectinload(Project.fire_protection_items),
         )
     )
     if project is None:
@@ -27,6 +28,7 @@ def _load_project_data(project_id: int, db: Session) -> dict | None:
         "corridors": project.corridors,
         "doors": doors,
         "exits": project.exits,
+        "fire_protection_items": project.fire_protection_items,
     }
 
 

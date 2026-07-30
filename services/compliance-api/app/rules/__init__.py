@@ -1,4 +1,13 @@
 from app.rules.base import Rule, RuleRegistry, RuleResult, register_rule, rule_registry
-from app.rules import corridor_width, door_width, exit_width, occupant_load  # noqa: F401 — register rules
+from app.rules import (  # noqa: F401 — register rules
+    corridor_width,
+    door_width,
+    exit_width,
+    fire_extinguisher,
+    occupant_load,
+    required_exits,
+    sprinkler_coverage,
+    travel_distance,
+)
 
 __all__ = ["Rule", "RuleRegistry", "RuleResult", "register_rule", "rule_registry"]
