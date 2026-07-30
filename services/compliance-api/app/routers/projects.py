@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_data_raw_dir
 from app.db import get_db
-from app.models import Project
+from app.models import Drawing, DrawingType, Project
 from app.reports.pdf import build_compliance_pdf
-from app.schemas import ComplianceReport, ProjectCreate, ProjectRead
+from app.schemas import ComplianceReport, DrawingRead, ProjectCreate, ProjectRead
 from app.services.compliance import build_compliance_report
-
 router = APIRouter()
 
 
@@ -56,6 +58,53 @@ def get_project_compliance(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     return build_compliance_report(project_id, db)
+
+
+@router.post(
+    "/{project_id}/drawings",
+    response_model=DrawingRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_drawing(
+    project_id: int,
+    file: UploadFile = File(...),
+    type: DrawingType = Form(DrawingType.ARCHITECTURAL),
+    db: Session = Depends(get_db),
+) -> Drawing:
+    project = db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    filename = file.filename or ""
+    is_pdf = (
+        file.content_type in {"application/pdf", "application/x-pdf"}
+        or filename.lower().endswith(".pdf")
+    )
+    if not is_pdf:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are allowed",
+        )
+
+    upload_date = datetime.now(UTC).replace(tzinfo=None)
+    timestamp = upload_date.strftime("%Y%m%d_%H%M%S")
+    saved_filename = f"project-{project_id}-{timestamp}.pdf"
+
+    raw_dir = get_data_raw_dir()
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    destination = raw_dir / saved_filename
+    destination.write_bytes(await file.read())
+
+    drawing = Drawing(
+        project_id=project_id,
+        type=type,
+        file_path=f"data/raw/{saved_filename}",
+        upload_date=upload_date,
+    )
+    db.add(drawing)
+    db.commit()
+    db.refresh(drawing)
+    return drawing
 
 
 @router.get("/{project_id}", response_model=ProjectRead)

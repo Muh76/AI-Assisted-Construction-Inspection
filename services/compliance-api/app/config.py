@@ -12,3 +12,11 @@ DEFAULT_DATABASE_URL = (
 
 def get_database_url() -> str:
     return os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+
+
+def get_repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent.parent
+
+
+def get_data_raw_dir() -> Path:
+    return get_repo_root() / "data" / "raw"

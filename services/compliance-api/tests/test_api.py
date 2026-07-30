@@ -136,3 +136,42 @@ def test_project_compliance_export_pdf(client):
 def test_project_compliance_export_not_found(client):
     response = client.get("/api/v1/projects/99999/compliance/export")
     assert response.status_code == 404
+
+
+def test_upload_drawing(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.routers.projects.get_data_raw_dir", lambda: tmp_path)
+
+    project_id = client.post(
+        "/api/v1/projects",
+        json={"name": "Drawing Upload Project"},
+    ).json()["id"]
+
+    pdf_content = b"%PDF-1.4 test drawing"
+    response = client.post(
+        f"/api/v1/projects/{project_id}/drawings",
+        files={"file": ("floor-plan.pdf", pdf_content, "application/pdf")},
+        data={"type": "architectural"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["project_id"] == project_id
+    assert body["type"] == "architectural"
+    assert body["file_path"].startswith("data/raw/project-")
+    assert body["file_path"].endswith(".pdf")
+
+    saved_files = list(tmp_path.glob("project-*.pdf"))
+    assert len(saved_files) == 1
+    assert saved_files[0].read_bytes() == pdf_content
+
+
+def test_upload_drawing_project_not_found(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.routers.projects.get_data_raw_dir", lambda: tmp_path)
+
+    response = client.post(
+        "/api/v1/projects/99999/drawings",
+        files={"file": ("floor-plan.pdf", b"%PDF-1.4", "application/pdf")},
+        data={"type": "architectural"},
+    )
+
+    assert response.status_code == 404
