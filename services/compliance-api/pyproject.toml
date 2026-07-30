@@ -13,6 +13,9 @@ dependencies = [
     "reportlab",
     "python-multipart",
     "pdfplumber",
+    "passlib[bcrypt]",
+    "bcrypt>=4.0.1,<4.1",
+    "python-jose[cryptography]",
 ]
 
 [project.optional-dependencies]

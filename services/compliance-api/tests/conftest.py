@@ -10,8 +10,36 @@ from app.db import Base, get_db
 from app.main import create_app
 
 
+def register_and_login(
+    client: TestClient,
+    email: str = "api-test-user@example.com",
+    password: str = "test-password-123",
+) -> dict[str, str]:
+    client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def noop_regulation_clause_lookup(_section: str) -> None:
     return None
+
+
+@pytest.fixture(autouse=True)
+def jwt_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key")
+
+
+@pytest.fixture
+def auth_headers(client: TestClient) -> dict[str, str]:
+    return register_and_login(client)
 
 
 @pytest.fixture

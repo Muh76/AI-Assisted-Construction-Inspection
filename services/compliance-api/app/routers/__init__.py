@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from app.routers import corridors, doors, drawings, fire_protection_items, projects, regulation_clauses, rooms
+from app.routers import auth, corridors, doors, drawings, fire_protection_items, projects, regulation_clauses, rooms
 
 api_router = APIRouter()
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 api_router.include_router(drawings.router, prefix="/drawings", tags=["drawings"])
 api_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])

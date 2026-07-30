@@ -24,12 +24,13 @@ def _configure_drawing_paths(monkeypatch, tmp_path):
     return raw_dir
 
 
-def test_extract_drawing_text(client, db_session, tmp_path, monkeypatch):
+def test_extract_drawing_text(client, db_session, tmp_path, monkeypatch, auth_headers):
     raw_dir = _configure_drawing_paths(monkeypatch, tmp_path)
 
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Drawing Extract Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     pdf_bytes = _make_test_pdf(["Page one text", "Page two text"])
@@ -37,6 +38,7 @@ def test_extract_drawing_text(client, db_session, tmp_path, monkeypatch):
         f"/api/v1/projects/{project_id}/drawings",
         files={"file": ("floor-plan.pdf", pdf_bytes, "application/pdf")},
         data={"type": "architectural"},
+        headers=auth_headers,
     )
     assert upload_response.status_code == 201
     drawing_id = upload_response.json()["id"]
@@ -68,15 +70,17 @@ def test_extract_drawing_text_not_found(client):
     assert response.json()["detail"] == "Drawing not found"
 
 
-def test_extract_drawing_text_missing_pdf(client, db_session, tmp_path, monkeypatch):
+def test_extract_drawing_text_missing_pdf(client, db_session, tmp_path, monkeypatch, auth_headers):
     _configure_drawing_paths(monkeypatch, tmp_path)
 
-    from app.models import Drawing, DrawingType
     from datetime import UTC, datetime
+
+    from app.models import Drawing, DrawingType
 
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Missing PDF Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     drawing = Drawing(

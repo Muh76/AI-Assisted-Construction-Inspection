@@ -5,13 +5,15 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.config import get_data_raw_dir
 from app.db import get_db
 from app.models import Drawing, DrawingType, Project
 from app.reports.pdf import build_compliance_pdf
 from app.schemas import ComplianceReport, DrawingRead, ProjectCreate, ProjectRead
 from app.services.compliance import build_compliance_report
-router = APIRouter()
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)

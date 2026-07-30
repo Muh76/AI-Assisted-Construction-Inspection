@@ -14,10 +14,11 @@ def sample_parsed_door_rows() -> list[dict]:
     ]
 
 
-def test_preview_parsed_doors(client, sample_parsed_door_rows):
+def test_preview_parsed_doors(client, sample_parsed_door_rows, auth_headers):
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Door Parse Preview Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     drawing_id = 42
@@ -52,10 +53,11 @@ def test_preview_parsed_doors_drawing_not_found(client):
     assert response.json()["detail"] == "Drawing not found"
 
 
-def test_confirm_parsed_doors(client, db_session, sample_parsed_door_rows):
+def test_confirm_parsed_doors(client, db_session, sample_parsed_door_rows, auth_headers):
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Door Parse Confirm Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     room_a_id = client.post(
@@ -67,6 +69,7 @@ def test_confirm_parsed_doors(client, db_session, sample_parsed_door_rows):
             "floor_area": 18.6,
             "occupant_load": 2,
         },
+        headers=auth_headers,
     ).json()["id"]
 
     room_b_id = client.post(
@@ -78,6 +81,7 @@ def test_confirm_parsed_doors(client, db_session, sample_parsed_door_rows):
             "floor_area": 20.0,
             "occupant_load": 2,
         },
+        headers=auth_headers,
     ).json()["id"]
 
     from datetime import UTC, datetime
@@ -126,10 +130,11 @@ def test_confirm_parsed_doors(client, db_session, sample_parsed_door_rows):
     assert len(doors) == 2
 
 
-def test_confirm_parsed_doors_room_not_found(client, db_session):
+def test_confirm_parsed_doors_room_not_found(client, db_session, auth_headers):
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Door Confirm Missing Room"},
+        headers=auth_headers,
     ).json()["id"]
 
     from datetime import UTC, datetime
@@ -163,14 +168,16 @@ def test_confirm_parsed_doors_room_not_found(client, db_session):
     assert response.json()["detail"] == "Room 99999 not found"
 
 
-def test_confirm_parsed_doors_room_wrong_project(client, db_session):
+def test_confirm_parsed_doors_room_wrong_project(client, db_session, auth_headers):
     project_a_id = client.post(
         "/api/v1/projects",
         json={"name": "Project A"},
+        headers=auth_headers,
     ).json()["id"]
     project_b_id = client.post(
         "/api/v1/projects",
         json={"name": "Project B"},
+        headers=auth_headers,
     ).json()["id"]
 
     room_id = client.post(
@@ -182,6 +189,7 @@ def test_confirm_parsed_doors_room_wrong_project(client, db_session):
             "floor_area": 18.6,
             "occupant_load": 2,
         },
+        headers=auth_headers,
     ).json()["id"]
 
     from datetime import UTC, datetime

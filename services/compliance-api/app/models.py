@@ -140,3 +140,12 @@ class RegulationClause(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     threshold_value: Mapped[float | None] = mapped_column(Float)
     threshold_unit: Mapped[str | None] = mapped_column(String(32))
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

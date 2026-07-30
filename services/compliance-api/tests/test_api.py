@@ -1,7 +1,8 @@
-def test_create_project_and_room(client):
+def test_create_project_and_room(client, auth_headers):
     project_response = client.post(
         "/api/v1/projects",
         json={"name": "Office Tower"},
+        headers=auth_headers,
     )
     assert project_response.status_code == 201
     project_id = project_response.json()["id"]
@@ -15,19 +16,26 @@ def test_create_project_and_room(client):
             "floor_area": 500.0,
             "occupant_load": 50,
         },
+        headers=auth_headers,
     )
     assert room_response.status_code == 201
 
-    get_project_response = client.get(f"/api/v1/projects/{project_id}")
+    get_project_response = client.get(
+        f"/api/v1/projects/{project_id}",
+        headers=auth_headers,
+    )
     assert get_project_response.status_code == 200
     assert get_project_response.json()["name"] == "Office Tower"
 
-    get_room_response = client.get(f"/api/v1/rooms/{room_response.json()['id']}")
+    get_room_response = client.get(
+        f"/api/v1/rooms/{room_response.json()['id']}",
+        headers=auth_headers,
+    )
     assert get_room_response.status_code == 200
     assert get_room_response.json()["name"] == "Lobby"
 
 
-def test_create_room_with_missing_project_returns_404(client):
+def test_create_room_with_missing_project_returns_404(client, auth_headers):
     response = client.post(
         "/api/v1/rooms",
         json={
@@ -37,12 +45,13 @@ def test_create_room_with_missing_project_returns_404(client):
             "floor_area": 500.0,
             "occupant_load": 50,
         },
+        headers=auth_headers,
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "Project not found"
 
 
-def test_create_door_with_missing_room_returns_404(client):
+def test_create_door_with_missing_room_returns_404(client, auth_headers):
     response = client.post(
         "/api/v1/doors",
         json={
@@ -50,12 +59,13 @@ def test_create_door_with_missing_room_returns_404(client):
             "clear_width": 860.0,
             "fire_rating": "30 min",
         },
+        headers=auth_headers,
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "Room not found"
 
 
-def test_project_compliance_endpoint(client, db_session):
+def test_project_compliance_endpoint(client, db_session, auth_headers):
     from app.models import RegulationClause
 
     db_session.add_all(
@@ -83,6 +93,7 @@ def test_project_compliance_endpoint(client, db_session):
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Compliance Test Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     room_id = client.post(
@@ -94,18 +105,24 @@ def test_project_compliance_endpoint(client, db_session):
             "floor_area": 18.6,
             "occupant_load": 2,
         },
+        headers=auth_headers,
     ).json()["id"]
 
     client.post(
         "/api/v1/doors",
         json={"room_id": room_id, "clear_width": 860.0},
+        headers=auth_headers,
     )
     client.post(
         "/api/v1/corridors",
         json={"project_id": project_id, "clear_width": 1100.0, "length": 12.0},
+        headers=auth_headers,
     )
 
-    response = client.get(f"/api/v1/projects/{project_id}/compliance")
+    response = client.get(
+        f"/api/v1/projects/{project_id}/compliance",
+        headers=auth_headers,
+    )
 
     assert response.status_code == 200
     report = response.json()
@@ -135,12 +152,15 @@ def test_project_compliance_endpoint(client, db_session):
     assert occupant_results[0]["regulation_citation"] is None
 
 
-def test_project_compliance_not_found(client):
-    response = client.get("/api/v1/projects/99999/compliance")
+def test_project_compliance_not_found(client, auth_headers):
+    response = client.get(
+        "/api/v1/projects/99999/compliance",
+        headers=auth_headers,
+    )
     assert response.status_code == 404
 
 
-def test_project_compliance_export_pdf(client, db_session):
+def test_project_compliance_export_pdf(client, db_session, auth_headers):
     from app.models import RegulationClause
 
     db_session.add(
@@ -158,6 +178,7 @@ def test_project_compliance_export_pdf(client, db_session):
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "PDF Export Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     room_id = client.post(
@@ -169,14 +190,19 @@ def test_project_compliance_export_pdf(client, db_session):
             "floor_area": 18.6,
             "occupant_load": 2,
         },
+        headers=auth_headers,
     ).json()["id"]
 
     client.post(
         "/api/v1/doors",
         json={"room_id": room_id, "clear_width": 860.0},
+        headers=auth_headers,
     )
 
-    response = client.get(f"/api/v1/projects/{project_id}/compliance/export")
+    response = client.get(
+        f"/api/v1/projects/{project_id}/compliance/export",
+        headers=auth_headers,
+    )
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
@@ -185,17 +211,21 @@ def test_project_compliance_export_pdf(client, db_session):
     assert f"compliance-report-project-{project_id}.pdf" in response.headers["content-disposition"]
 
 
-def test_project_compliance_export_not_found(client):
-    response = client.get("/api/v1/projects/99999/compliance/export")
+def test_project_compliance_export_not_found(client, auth_headers):
+    response = client.get(
+        "/api/v1/projects/99999/compliance/export",
+        headers=auth_headers,
+    )
     assert response.status_code == 404
 
 
-def test_upload_drawing(client, tmp_path, monkeypatch):
+def test_upload_drawing(client, tmp_path, monkeypatch, auth_headers):
     monkeypatch.setattr("app.routers.projects.get_data_raw_dir", lambda: tmp_path)
 
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Drawing Upload Project"},
+        headers=auth_headers,
     ).json()["id"]
 
     pdf_content = b"%PDF-1.4 test drawing"
@@ -203,6 +233,7 @@ def test_upload_drawing(client, tmp_path, monkeypatch):
         f"/api/v1/projects/{project_id}/drawings",
         files={"file": ("floor-plan.pdf", pdf_content, "application/pdf")},
         data={"type": "architectural"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 201
@@ -217,13 +248,19 @@ def test_upload_drawing(client, tmp_path, monkeypatch):
     assert saved_files[0].read_bytes() == pdf_content
 
 
-def test_upload_drawing_project_not_found(client, tmp_path, monkeypatch):
+def test_upload_drawing_project_not_found(client, tmp_path, monkeypatch, auth_headers):
     monkeypatch.setattr("app.routers.projects.get_data_raw_dir", lambda: tmp_path)
 
     response = client.post(
         "/api/v1/projects/99999/drawings",
         files={"file": ("floor-plan.pdf", b"%PDF-1.4", "application/pdf")},
         data={"type": "architectural"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 404
+
+
+def test_protected_route_requires_auth(client):
+    response = client.get("/api/v1/projects")
+    assert response.status_code == 401

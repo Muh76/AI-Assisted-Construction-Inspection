@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.db import get_db
 from app.models import Corridor
 from app.schemas import CorridorCreate, CorridorRead
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=CorridorRead, status_code=status.HTTP_201_CREATED)
