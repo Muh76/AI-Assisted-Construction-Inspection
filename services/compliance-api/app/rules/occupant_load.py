@@ -3,11 +3,8 @@ from typing import Any
 
 from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
-# Square metres of floor area per occupant (placeholder lookup).
-OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON: dict[str, float] = {
-    "office": 9.3,
-    "B": 9.3,
-}
+REGULATION_CLAUSE_SECTION = "3.1.2.1"
+SUPPORTED_OCCUPANCY_CATEGORIES = {"office", "b"}
 
 
 class OccupantLoadRule(Rule):
@@ -18,6 +15,21 @@ class OccupantLoadRule(Rule):
         project_data: Any,
         lookup_regulation_clause: RegulationClauseLookup,
     ) -> list[RuleResult]:
+        clause = lookup_regulation_clause(REGULATION_CLAUSE_SECTION)
+        if clause is None or clause.threshold_value is None:
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    passed=False,
+                    message=(
+                        f"Regulation clause {REGULATION_CLAUSE_SECTION} was not found "
+                        "or has no threshold value."
+                    ),
+                    regulation_clause_id=clause.id if clause is not None else None,
+                )
+            ]
+
+        load_factor = clause.threshold_value
         rooms = project_data.get("rooms", [])
         results: list[RuleResult] = []
 
@@ -35,12 +47,8 @@ class OccupantLoadRule(Rule):
                 floor_area = room.floor_area
                 occupant_load = room.occupant_load
 
-            category_key = occupancy_category.strip()
-            load_factor = OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON.get(
-                category_key
-            ) or OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON.get(category_key.lower())
-
-            if load_factor is None:
+            category_key = occupancy_category.strip().lower()
+            if category_key not in SUPPORTED_OCCUPANCY_CATEGORIES:
                 results.append(
                     RuleResult(
                         rule_id=self.rule_id,
@@ -49,11 +57,13 @@ class OccupantLoadRule(Rule):
                             f"Room {room_id} ({name}) uses unknown occupancy category "
                             f"'{occupancy_category}'."
                         ),
+                        regulation_clause_id=clause.id,
                         evidence={
                             "room_id": room_id,
                             "occupancy_category": occupancy_category,
                             "floor_area_sqm": floor_area,
                             "occupant_load": occupant_load,
+                            "regulation_clause_section": REGULATION_CLAUSE_SECTION,
                         },
                     )
                 )
@@ -80,6 +90,7 @@ class OccupantLoadRule(Rule):
                     rule_id=self.rule_id,
                     passed=passed,
                     message=message,
+                    regulation_clause_id=clause.id,
                     evidence={
                         "room_id": room_id,
                         "occupancy_category": occupancy_category,
@@ -87,11 +98,18 @@ class OccupantLoadRule(Rule):
                         "occupant_load": occupant_load,
                         "expected_occupant_load": expected_load,
                         "load_factor_sqm_per_person": load_factor,
+                        "regulation_clause_section": REGULATION_CLAUSE_SECTION,
                     },
                 )
             )
 
         return results
 
+
+# Retained for seed_regulations.py reference values.
+OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON: dict[str, float] = {
+    "office": 9.3,
+    "B": 9.3,
+}
 
 occupant_load_rule = register_rule(OccupantLoadRule())

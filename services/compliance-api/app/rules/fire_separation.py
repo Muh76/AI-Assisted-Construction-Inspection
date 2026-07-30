@@ -4,6 +4,8 @@ from typing import Any
 from app.models import FireProtectionItemType
 from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
+REGULATION_CLAUSE_SECTION = "3.1.3.2"
+
 _RATING_MINUTES_PATTERN = re.compile(r"(\d+)")
 
 
@@ -24,6 +26,18 @@ class FireSeparationRule(Rule):
         project_data: Any,
         lookup_regulation_clause: RegulationClauseLookup,
     ) -> list[RuleResult]:
+        clause = lookup_regulation_clause(REGULATION_CLAUSE_SECTION)
+        if clause is None:
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    passed=False,
+                    message=(
+                        f"Regulation clause {REGULATION_CLAUSE_SECTION} was not found."
+                    ),
+                )
+            ]
+
         items = project_data.get("fire_protection_items", [])
         results: list[RuleResult] = []
 
@@ -76,6 +90,7 @@ class FireSeparationRule(Rule):
                     rule_id=self.rule_id,
                     passed=passed,
                     message=message,
+                    regulation_clause_id=clause.id,
                     evidence={
                         "fire_protection_item_id": item_id,
                         "item_type": item_type_value,
@@ -83,6 +98,7 @@ class FireSeparationRule(Rule):
                         "rating_provided": rating_provided,
                         "required_minutes": required_minutes,
                         "provided_minutes": provided_minutes,
+                        "regulation_clause_section": REGULATION_CLAUSE_SECTION,
                     },
                 )
             )

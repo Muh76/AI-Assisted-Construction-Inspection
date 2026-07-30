@@ -24,6 +24,7 @@ dev = ["pytest", "httpx"]
 [project.scripts]
 seed-example = "scripts.seed_example:main"
 seed-regulations = "scripts.seed_regulations:main"
+audit-rules = "scripts.audit_rules:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

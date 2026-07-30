@@ -1,6 +1,6 @@
-from tests.conftest import noop_regulation_clause_lookup
+from tests.rule_test_helpers import regulation_clause_lookup_for
 from app.rules.base import rule_registry
-from app.rules.sprinkler_coverage import SprinklerCoverageRule
+from app.rules.sprinkler_coverage import REGULATION_CLAUSE_SECTION, SprinklerCoverageRule
 
 
 def test_sprinkler_coverage_rule_passing_and_failing():
@@ -12,19 +12,24 @@ def test_sprinkler_coverage_rule_passing_and_failing():
         ]
     }
 
-    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
+    results = rule.evaluate(
+        project_data,
+        regulation_clause_lookup_for(REGULATION_CLAUSE_SECTION, threshold_value=None),
+    )
 
     assert len(results) == 2
 
     passing, failing = results
     assert passing.passed is True
     assert passing.rule_id == "sprinkler-coverage"
+    assert passing.regulation_clause_id == 1
     assert passing.evidence["room_id"] == 1
     assert passing.evidence["sprinklered"] is True
     assert "is sprinklered" in passing.message
 
     assert failing.passed is False
     assert failing.rule_id == "sprinkler-coverage"
+    assert failing.regulation_clause_id == 1
     assert failing.evidence["room_id"] == 2
     assert failing.evidence["sprinklered"] is False
     assert "is not sprinklered" in failing.message

@@ -2,6 +2,8 @@ from typing import Any
 
 from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
+REGULATION_CLAUSE_SECTION = "3.2.2.1"
+
 
 class SprinklerCoverageRule(Rule):
     rule_id = "sprinkler-coverage"
@@ -11,6 +13,18 @@ class SprinklerCoverageRule(Rule):
         project_data: Any,
         lookup_regulation_clause: RegulationClauseLookup,
     ) -> list[RuleResult]:
+        clause = lookup_regulation_clause(REGULATION_CLAUSE_SECTION)
+        if clause is None:
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    passed=False,
+                    message=(
+                        f"Regulation clause {REGULATION_CLAUSE_SECTION} was not found."
+                    ),
+                )
+            ]
+
         rooms = project_data.get("rooms", [])
         results: list[RuleResult] = []
 
@@ -35,9 +49,11 @@ class SprinklerCoverageRule(Rule):
                     rule_id=self.rule_id,
                     passed=passed,
                     message=message,
+                    regulation_clause_id=clause.id,
                     evidence={
                         "room_id": room_id,
                         "sprinklered": sprinklered,
+                        "regulation_clause_section": REGULATION_CLAUSE_SECTION,
                     },
                 )
             )

@@ -1,6 +1,6 @@
-from tests.conftest import noop_regulation_clause_lookup
+from tests.rule_test_helpers import regulation_clause_lookup_for
 from app.rules.base import rule_registry
-from app.rules.fire_separation import FireSeparationRule
+from app.rules.fire_separation import FireSeparationRule, REGULATION_CLAUSE_SECTION
 
 
 def test_fire_separation_rule_passing_and_failing():
@@ -31,19 +31,24 @@ def test_fire_separation_rule_passing_and_failing():
         ]
     }
 
-    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
+    results = rule.evaluate(
+        project_data,
+        regulation_clause_lookup_for(REGULATION_CLAUSE_SECTION, threshold_value=None),
+    )
 
     assert len(results) == 2
 
     passing, failing = results
     assert passing.passed is True
     assert passing.rule_id == "fire-separation-rating"
+    assert passing.regulation_clause_id == 1
     assert passing.evidence["fire_protection_item_id"] == 1
     assert passing.evidence["required_minutes"] == 120
     assert passing.evidence["provided_minutes"] == 120
 
     assert failing.passed is False
     assert failing.rule_id == "fire-separation-rating"
+    assert failing.regulation_clause_id == 1
     assert failing.evidence["fire_protection_item_id"] == 2
     assert failing.evidence["required_minutes"] == 120
     assert failing.evidence["provided_minutes"] == 90
