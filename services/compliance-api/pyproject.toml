@@ -9,6 +9,7 @@ dependencies = [
     "sqlalchemy",
     "alembic",
     "psycopg2-binary",
+    "python-dotenv",
 ]
 
 [build-system]

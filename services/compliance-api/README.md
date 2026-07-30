@@ -6,6 +6,7 @@ Minimal FastAPI service for construction compliance workflows.
 
 - Python 3.11+
 - pip
+- PostgreSQL (local or remote)
 
 ## Setup
 
@@ -34,6 +35,34 @@ Install dependencies:
 
 ```bash
 pip install -e .
+```
+
+Copy the example environment file and adjust if needed:
+
+```bash
+cp .env.example .env
+```
+
+`DATABASE_URL` defaults to `postgresql+psycopg2://postgres:postgres@localhost:5432/compliance` when unset.
+
+Ensure the database exists before running migrations:
+
+```sql
+CREATE DATABASE compliance;
+```
+
+## Database migrations
+
+Apply migrations (requires a running Postgres instance):
+
+```bash
+alembic upgrade head
+```
+
+Create a new revision after adding models:
+
+```bash
+alembic revision --autogenerate -m "describe change"
 ```
 
 ## Run
