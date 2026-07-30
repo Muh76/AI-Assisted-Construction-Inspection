@@ -10,6 +10,7 @@ dependencies = [
     "alembic",
     "psycopg2-binary",
     "python-dotenv",
+    "reportlab",
 ]
 
 [project.optional-dependencies]

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -80,3 +81,22 @@ class CorridorRead(BaseModel):
     project_id: int
     clear_width: float
     length: float
+
+
+class RuleResultRead(BaseModel):
+    rule_id: str
+    passed: bool
+    message: str
+    evidence: dict[str, Any]
+
+
+class ComplianceSummary(BaseModel):
+    passed: int
+    failed: int
+
+
+class ComplianceReport(BaseModel):
+    project_id: int
+    generated_at: datetime
+    results: list[RuleResultRead]
+    summary: ComplianceSummary
