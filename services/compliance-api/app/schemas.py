@@ -104,6 +104,27 @@ class FireProtectionItemRead(BaseModel):
     travel_distance_to_nearest: float | None
 
 
+class RegulationClauseCreate(BaseModel):
+    code: str
+    section: str
+    title: str
+    description: str
+    threshold_value: float | None = None
+    threshold_unit: str | None = None
+
+
+class RegulationClauseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    section: str
+    title: str
+    description: str
+    threshold_value: float | None
+    threshold_unit: str | None
+
+
 class RuleResultRead(BaseModel):
     rule_id: str
     passed: bool

@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -113,3 +113,15 @@ class FireProtectionItem(Base):
     travel_distance_to_nearest: Mapped[float | None] = mapped_column(Float)
 
     project: Mapped["Project"] = relationship(back_populates="fire_protection_items")
+
+
+class RegulationClause(Base):
+    __tablename__ = "regulation_clauses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    section: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    threshold_value: Mapped[float | None] = mapped_column(Float)
+    threshold_unit: Mapped[str | None] = mapped_column(String(32))
