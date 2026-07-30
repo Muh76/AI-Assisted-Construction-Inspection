@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv",
     "reportlab",
     "python-multipart",
+    "pdfplumber",
 ]
 
 [project.optional-dependencies]

@@ -34,6 +34,35 @@ class DrawingRead(BaseModel):
     upload_date: datetime
 
 
+class DrawingExtractResponse(BaseModel):
+    drawing_id: int
+    pages_processed: int
+
+
+class DoorSchedulePreviewRow(BaseModel):
+    door_number: str
+    width: float
+    fire_rating: str | None = None
+
+
+class DoorSchedulePreviewResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    preview: bool = True
+    rows: list[DoorSchedulePreviewRow]
+
+
+class DoorScheduleConfirmRow(BaseModel):
+    door_number: str
+    width: float
+    fire_rating: str | None = None
+    room_id: int
+
+
+class DoorScheduleConfirmRequest(BaseModel):
+    rows: list[DoorScheduleConfirmRow]
+
+
 class RoomCreate(BaseModel):
     project_id: int
     name: str
@@ -66,6 +95,11 @@ class DoorRead(BaseModel):
     room_id: int
     clear_width: float
     fire_rating: str | None
+
+
+class DoorScheduleConfirmResponse(BaseModel):
+    drawing_id: int
+    created: list[DoorRead]
 
 
 class CorridorCreate(BaseModel):

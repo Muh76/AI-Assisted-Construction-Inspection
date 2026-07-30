@@ -46,6 +46,21 @@ class Drawing(Base):
     upload_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     project: Mapped["Project"] = relationship(back_populates="drawings")
+    text_pages: Mapped[list["DrawingText"]] = relationship(
+        back_populates="drawing",
+        cascade="all, delete-orphan",
+    )
+
+
+class DrawingText(Base):
+    __tablename__ = "drawing_texts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    drawing_id: Mapped[int] = mapped_column(ForeignKey("drawings.id"), nullable=False)
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    drawing: Mapped["Drawing"] = relationship(back_populates="text_pages")
 
 
 class Room(Base):
