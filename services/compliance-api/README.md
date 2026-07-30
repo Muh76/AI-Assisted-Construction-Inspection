@@ -65,6 +65,20 @@ Create a new revision after adding models:
 alembic revision --autogenerate -m "describe change"
 ```
 
+## Seed sample data
+
+After migrations, load example project data into the local dev database:
+
+```bash
+seed-example
+```
+
+Or run the script directly:
+
+```bash
+python -m scripts.seed_example
+```
+
 ## Run
 
 Start the development server:

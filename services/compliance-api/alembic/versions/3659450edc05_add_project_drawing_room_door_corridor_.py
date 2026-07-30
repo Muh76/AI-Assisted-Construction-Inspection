@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "3659450edc05"
@@ -17,10 +18,11 @@ down_revision: Union[str, Sequence[str], None] = "397a5baa433c"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-drawing_type_enum = sa.Enum(
+drawing_type_enum = postgresql.ENUM(
     "architectural",
     "mechanical",
     name="drawing_type",
+    create_type=False,
 )
 
 
