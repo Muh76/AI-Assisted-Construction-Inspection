@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Door
+from app.models import Door, Room
 from app.schemas import DoorCreate, DoorRead
 
 router = APIRouter()
@@ -11,6 +11,13 @@ router = APIRouter()
 
 @router.post("", response_model=DoorRead, status_code=status.HTTP_201_CREATED)
 def create_door(payload: DoorCreate, db: Session = Depends(get_db)) -> Door:
+    room = db.get(Room, payload.room_id)
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found",
+        )
+
     door = Door(**payload.model_dump())
     db.add(door)
     db.commit()
@@ -40,6 +47,13 @@ def update_door(
     door = db.get(Door, door_id)
     if door is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Door not found")
+
+    room = db.get(Room, payload.room_id)
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found",
+        )
 
     for field, value in payload.model_dump().items():
         setattr(door, field, value)
