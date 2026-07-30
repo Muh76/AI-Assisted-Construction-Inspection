@@ -3,16 +3,21 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Door, Drawing, Room
+from app.parsing.corridor_vision import parse_corridor_width_callouts
 from app.parsing.door_schedule import extract_door_schedule
+from app.parsing.page_image import render_drawing_page
 from app.parsing.raw_extract import extract_text
 from app.parsing.room_schedule import extract_room_schedule
 from app.schemas import (
+    CorridorVisionPreviewResponse,
+    CorridorWidthCalloutPreviewRow,
     DoorScheduleConfirmRequest,
     DoorScheduleConfirmResponse,
     DoorSchedulePreviewResponse,
     DoorSchedulePreviewRow,
     DoorRead,
     DrawingExtractResponse,
+    DrawingPageRenderResponse,
     RoomScheduleConfirmRequest,
     RoomScheduleConfirmResponse,
     RoomSchedulePreviewResponse,
@@ -60,6 +65,106 @@ def extract_drawing_text(
     return DrawingExtractResponse(
         drawing_id=drawing_id,
         pages_processed=pages_processed,
+    )
+
+
+@router.post(
+    "/{drawing_id}/pages/{page_number}/render",
+    response_model=DrawingPageRenderResponse,
+    status_code=status.HTTP_200_OK,
+)
+def render_drawing_page_image(
+    drawing_id: int,
+    page_number: int,
+    db: Session = Depends(get_db),
+) -> DrawingPageRenderResponse:
+    _get_drawing_or_404(drawing_id, db)
+
+    if page_number < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="page_number must be at least 1",
+        )
+
+    try:
+        file_path = render_drawing_page(drawing_id, page_number, db)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message:
+            status_code = status.HTTP_404_NOT_FOUND
+        else:
+            status_code = status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status_code,
+            detail=message,
+        ) from exc
+
+    return DrawingPageRenderResponse(
+        drawing_id=drawing_id,
+        page_number=page_number,
+        file_path=file_path,
+    )
+
+
+@router.post(
+    "/{drawing_id}/pages/{page_number}/parse-corridors",
+    response_model=CorridorVisionPreviewResponse,
+    status_code=status.HTTP_200_OK,
+)
+def preview_parsed_corridor_widths(
+    drawing_id: int,
+    page_number: int,
+    db: Session = Depends(get_db),
+) -> CorridorVisionPreviewResponse:
+    _get_drawing_or_404(drawing_id, db)
+
+    if page_number < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="page_number must be at least 1",
+        )
+
+    try:
+        image_path, callouts = parse_corridor_width_callouts(
+            drawing_id,
+            page_number,
+            db,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message:
+            status_code = status.HTTP_404_NOT_FOUND
+        else:
+            status_code = status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status_code,
+            detail=message,
+        ) from exc
+
+    return CorridorVisionPreviewResponse(
+        drawing_id=drawing_id,
+        page_number=page_number,
+        preview=True,
+        image_path=image_path,
+        callouts=[
+            CorridorWidthCalloutPreviewRow.model_validate(callout)
+            for callout in callouts
+        ],
     )
 
 

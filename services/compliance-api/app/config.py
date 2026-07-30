@@ -10,6 +10,7 @@ DEFAULT_DATABASE_URL = (
 )
 DEFAULT_JWT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 60
+DEFAULT_OPENAI_VISION_MODEL = "gpt-4o-mini"
 
 
 def get_database_url() -> str:
@@ -45,3 +46,11 @@ def get_data_raw_dir() -> Path:
 
 def get_data_regulations_dir() -> Path:
     return get_repo_root() / "data" / "regulations"
+
+
+def get_openai_api_key() -> str | None:
+    return os.getenv("OPENAI_API_KEY")
+
+
+def get_openai_vision_model() -> str:
+    return os.getenv("OPENAI_VISION_MODEL", DEFAULT_OPENAI_VISION_MODEL)

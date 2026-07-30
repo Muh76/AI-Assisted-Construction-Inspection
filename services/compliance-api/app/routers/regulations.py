@@ -1,14 +1,24 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.config import get_data_regulations_dir
 from app.db import get_db
-from app.models import RegulationDocument
+from app.models import RegulationClause, RegulationDocument, RegulationText
+from app.parsing.clause_extract import extract_candidate_clauses
 from app.parsing.regulation_text import extract_regulation_pages
-from app.schemas import RegulationDocumentRead, RegulationExtractResponse
+from app.schemas import (
+    RegulationClauseConfirmRequest,
+    RegulationClauseConfirmResponse,
+    RegulationClausePreviewResponse,
+    RegulationClausePreviewRow,
+    RegulationClauseRead,
+    RegulationDocumentRead,
+    RegulationExtractResponse,
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -29,6 +39,28 @@ def _get_document_or_404(document_id: int, db: Session) -> RegulationDocument:
             detail="Regulation document not found",
         )
     return document
+
+
+def _title_and_description(text: str) -> tuple[str, str]:
+    stripped = text.strip()
+    if not stripped:
+        return "", ""
+
+    first_line = stripped.splitlines()[0].strip()
+    return first_line, stripped
+
+
+def _get_document_text_pages(
+    document_id: int,
+    db: Session,
+) -> list[RegulationText]:
+    return list(
+        db.scalars(
+            select(RegulationText)
+            .where(RegulationText.document_id == document_id)
+            .order_by(RegulationText.page_number)
+        ).all()
+    )
 
 
 @router.post(
@@ -118,4 +150,76 @@ def extract_regulation_document_text(
         start_page=start,
         end_page=end,
         pages_processed=pages_processed,
+    )
+
+
+@router.post(
+    "/documents/{document_id}/parse-clauses/confirm",
+    response_model=RegulationClauseConfirmResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def confirm_parsed_clauses(
+    document_id: int,
+    payload: RegulationClauseConfirmRequest,
+    db: Session = Depends(get_db),
+) -> RegulationClauseConfirmResponse:
+    document = _get_document_or_404(document_id, db)
+    created: list[RegulationClause] = []
+    updated: list[RegulationClause] = []
+
+    for row in payload.clauses:
+        title, description = _title_and_description(row.text)
+        existing = db.scalar(
+            select(RegulationClause).where(
+                RegulationClause.code == document.code,
+                RegulationClause.section == row.section,
+            )
+        )
+        if existing is None:
+            clause = RegulationClause(
+                code=document.code,
+                section=row.section,
+                title=title,
+                description=description,
+                threshold_value=row.threshold_value,
+                threshold_unit=row.threshold_unit,
+            )
+            db.add(clause)
+            created.append(clause)
+            continue
+
+        existing.title = title
+        existing.description = description
+        existing.threshold_value = row.threshold_value
+        existing.threshold_unit = row.threshold_unit
+        updated.append(existing)
+
+    db.commit()
+    for clause in created + updated:
+        db.refresh(clause)
+
+    return RegulationClauseConfirmResponse(
+        document_id=document_id,
+        created=[RegulationClauseRead.model_validate(clause) for clause in created],
+        updated=[RegulationClauseRead.model_validate(clause) for clause in updated],
+    )
+
+
+@router.post(
+    "/documents/{document_id}/parse-clauses",
+    response_model=RegulationClausePreviewResponse,
+    status_code=status.HTTP_200_OK,
+)
+def preview_parsed_clauses(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> RegulationClausePreviewResponse:
+    _get_document_or_404(document_id, db)
+    text_pages = _get_document_text_pages(document_id, db)
+    candidates = extract_candidate_clauses(text_pages)
+
+    return RegulationClausePreviewResponse(
+        document_id=document_id,
+        preview=True,
+        clauses=[RegulationClausePreviewRow.model_validate(clause) for clause in candidates],
     )

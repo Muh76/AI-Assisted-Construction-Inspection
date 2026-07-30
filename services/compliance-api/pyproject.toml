@@ -13,6 +13,8 @@ dependencies = [
     "reportlab",
     "python-multipart",
     "pdfplumber",
+    "pdf2image",
+    "openai",
     "passlib[bcrypt]",
     "bcrypt>=4.0.1,<4.1",
     "python-jose[cryptography]",

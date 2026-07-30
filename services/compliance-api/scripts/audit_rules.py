@@ -5,9 +5,14 @@ from __future__ import annotations
 import inspect
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 
+from sqlalchemy import select
+
 import app.rules  # noqa: F401 — load registered rules
+from app.db import SessionLocal
+from app.models import RegulationClause
 from app.rules.base import Rule, rule_registry
 
 HARDCODED_THRESHOLD_PATTERN = re.compile(
@@ -109,6 +114,16 @@ class RuleAuditResult:
         )
 
 
+@dataclass(frozen=True)
+class PlaceholderClauseAuditResult:
+    id: int
+    code: str
+    section: str
+    title: str
+    threshold_value: float | None
+    reasons: tuple[str, ...]
+
+
 def _rule_module_name(rule: Rule) -> str:
     return rule.__class__.__module__.rsplit(".", 1)[-1]
 
@@ -154,7 +169,66 @@ def audit_all_rules() -> list[RuleAuditResult]:
     return [audit_rule(rule) for rule in sorted(rule_registry.all(), key=lambda r: r.rule_id)]
 
 
-def _print_report(results: list[RuleAuditResult]) -> int:
+def _load_seed_todo_sections() -> frozenset[str]:
+    seed_path = Path(__file__).resolve().parent / "seed_regulations.py"
+    sections: set[str] = set()
+    pending_todo = False
+
+    for line in seed_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# TODO:"):
+            pending_todo = True
+            continue
+        if pending_todo:
+            match = re.search(r'section="([^"]+)"', stripped)
+            if match:
+                sections.add(match.group(1))
+                pending_todo = False
+
+    return frozenset(sections)
+
+
+def audit_placeholder_clauses() -> list[PlaceholderClauseAuditResult]:
+    todo_sections = _load_seed_todo_sections()
+    db = SessionLocal()
+
+    try:
+        clauses = list(
+            db.scalars(
+                select(RegulationClause).order_by(
+                    RegulationClause.code,
+                    RegulationClause.section,
+                )
+            ).all()
+        )
+    finally:
+        db.close()
+
+    placeholders: list[PlaceholderClauseAuditResult] = []
+    for clause in clauses:
+        reasons: list[str] = []
+        if clause.threshold_value is None:
+            reasons.append("null_threshold_value")
+        if clause.section in todo_sections:
+            reasons.append("seed_todo_section")
+        if not reasons:
+            continue
+
+        placeholders.append(
+            PlaceholderClauseAuditResult(
+                id=clause.id,
+                code=clause.code,
+                section=clause.section,
+                title=clause.title,
+                threshold_value=clause.threshold_value,
+                reasons=tuple(reasons),
+            )
+        )
+
+    return placeholders
+
+
+def _print_rule_report(results: list[RuleAuditResult]) -> int:
     print("Compliance rule regulation clause audit")
     print("=" * 72)
 
@@ -187,11 +261,61 @@ def _print_report(results: list[RuleAuditResult]) -> int:
     passed_count = len(results) - failures
     print("=" * 72)
     print(f"Summary: {passed_count} passed, {failures} failed, {len(results)} total")
-    return 1 if failures else 0
+    return failures
+
+
+def _print_placeholder_clause_report(
+    placeholders: list[PlaceholderClauseAuditResult],
+) -> None:
+    print()
+    print("Regulation clause placeholder audit")
+    print("=" * 72)
+
+    if not placeholders:
+        print("No placeholder regulation clauses found.")
+        print(
+            "All clauses have threshold values and none match seed TODO sections."
+        )
+        return
+
+    print(
+        "The following regulation clauses still need a real citation from an "
+        "uploaded regulation document:"
+    )
+    print()
+
+    for placeholder in placeholders:
+        reason_labels = []
+        if "null_threshold_value" in placeholder.reasons:
+            reason_labels.append("NULL threshold_value")
+        if "seed_todo_section" in placeholder.reasons:
+            reason_labels.append("seed TODO section")
+        joined_reasons = ", ".join(reason_labels)
+
+        print(
+            f"[PLACEHOLDER] {placeholder.code} {placeholder.section} "
+            f"(id={placeholder.id})"
+        )
+        print(f"       title: {placeholder.title}")
+        print(f"       threshold_value: {placeholder.threshold_value}")
+        print(f"       reasons: {joined_reasons}")
+        print()
+
+    print("=" * 72)
+    print(f"Summary: {len(placeholders)} placeholder clause(s) remaining")
+
+
+def _print_report(
+    results: list[RuleAuditResult],
+    placeholders: list[PlaceholderClauseAuditResult],
+) -> int:
+    rule_failures = _print_rule_report(results)
+    _print_placeholder_clause_report(placeholders)
+    return 1 if rule_failures else 0
 
 
 def main() -> None:
-    exit_code = _print_report(audit_all_rules())
+    exit_code = _print_report(audit_all_rules(), audit_placeholder_clauses())
     raise SystemExit(exit_code)
 
 

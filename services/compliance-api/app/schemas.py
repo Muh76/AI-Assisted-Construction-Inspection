@@ -40,6 +40,26 @@ class DrawingExtractResponse(BaseModel):
     pages_processed: int
 
 
+class DrawingPageRenderResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    file_path: str
+
+
+class CorridorWidthCalloutPreviewRow(BaseModel):
+    label: str
+    width_mm: float
+    approximate_location: str
+
+
+class CorridorVisionPreviewResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    preview: bool = True
+    image_path: str
+    callouts: list[CorridorWidthCalloutPreviewRow]
+
+
 class DoorSchedulePreviewRow(BaseModel):
     door_number: str
     width: float
@@ -222,6 +242,35 @@ class RegulationExtractResponse(BaseModel):
     start_page: int
     end_page: int
     pages_processed: int
+
+
+class RegulationClausePreviewRow(BaseModel):
+    section: str
+    text: str
+    page_number: int
+
+
+class RegulationClausePreviewResponse(BaseModel):
+    document_id: int
+    preview: bool = True
+    clauses: list[RegulationClausePreviewRow]
+
+
+class RegulationClauseConfirmRow(BaseModel):
+    section: str
+    text: str
+    threshold_value: float | None = None
+    threshold_unit: str | None = None
+
+
+class RegulationClauseConfirmRequest(BaseModel):
+    clauses: list[RegulationClauseConfirmRow]
+
+
+class RegulationClauseConfirmResponse(BaseModel):
+    document_id: int
+    created: list[RegulationClauseRead]
+    updated: list[RegulationClauseRead]
 
 
 class RuleResultRead(BaseModel):
