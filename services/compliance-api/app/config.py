@@ -41,3 +41,7 @@ def get_repo_root() -> Path:
 
 def get_data_raw_dir() -> Path:
     return get_repo_root() / "data" / "raw"
+
+
+def get_data_regulations_dir() -> Path:
+    return get_repo_root() / "data" / "regulations"

@@ -144,6 +144,35 @@ class RegulationClause(Base):
     threshold_unit: Mapped[str | None] = mapped_column(String(32))
 
 
+class RegulationDocument(Base):
+    __tablename__ = "regulation_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    edition: Mapped[str] = mapped_column(String(32), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    text_pages: Mapped[list["RegulationText"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+    )
+
+
+class RegulationText(Base):
+    __tablename__ = "regulation_texts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("regulation_documents.id"),
+        nullable=False,
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    document: Mapped["RegulationDocument"] = relationship(back_populates="text_pages")
+
+
 class User(Base):
     __tablename__ = "users"
 

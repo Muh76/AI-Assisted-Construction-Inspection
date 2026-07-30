@@ -207,6 +207,23 @@ class RegulationClauseRead(BaseModel):
     threshold_unit: str | None
 
 
+class RegulationDocumentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    edition: str
+    file_path: str
+    uploaded_at: datetime
+
+
+class RegulationExtractResponse(BaseModel):
+    document_id: int
+    start_page: int
+    end_page: int
+    pages_processed: int
+
+
 class RuleResultRead(BaseModel):
     rule_id: str
     passed: bool
