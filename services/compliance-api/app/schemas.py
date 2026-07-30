@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import DrawingType
+from app.models import DrawingType, FireProtectionItemType
 
 
 class ProjectCreate(BaseModel):
@@ -81,6 +81,27 @@ class CorridorRead(BaseModel):
     project_id: int
     clear_width: float
     length: float
+
+
+class FireProtectionItemCreate(BaseModel):
+    project_id: int
+    item_type: FireProtectionItemType
+    location: str
+    rating_required: str | None = None
+    rating_provided: str | None = None
+    travel_distance_to_nearest: float | None = None
+
+
+class FireProtectionItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    project_id: int
+    item_type: FireProtectionItemType
+    location: str
+    rating_required: str | None
+    rating_provided: str | None
+    travel_distance_to_nearest: float | None
 
 
 class RuleResultRead(BaseModel):

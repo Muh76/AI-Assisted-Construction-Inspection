@@ -13,6 +13,7 @@ def _load_project_data(project_id: int, db: Session) -> dict | None:
         .options(
             selectinload(Project.rooms).selectinload(Room.doors),
             selectinload(Project.corridors),
+            selectinload(Project.exits),
         )
     )
     if project is None:
@@ -25,6 +26,7 @@ def _load_project_data(project_id: int, db: Session) -> dict | None:
         "rooms": project.rooms,
         "corridors": project.corridors,
         "doors": doors,
+        "exits": project.exits,
     }
 
 
