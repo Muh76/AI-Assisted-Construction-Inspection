@@ -24,17 +24,18 @@ def build_compliance_pdf(report: ComplianceReport, project_name: str) -> bytes:
         Spacer(1, 18),
     ]
 
-    table_data = [["Rule ID", "Passed", "Message"]]
+    table_data = [["Rule ID", "Citation", "Passed", "Message"]]
     for result in report.results:
         table_data.append(
             [
                 result.rule_id,
+                result.regulation_citation or "—",
                 "Yes" if result.passed else "No",
                 result.message,
             ]
         )
 
-    table = Table(table_data, colWidths=[120, 60, 340], repeatRows=1)
+    table = Table(table_data, colWidths=[100, 80, 50, 330], repeatRows=1)
     table.setStyle(
         TableStyle(
             [

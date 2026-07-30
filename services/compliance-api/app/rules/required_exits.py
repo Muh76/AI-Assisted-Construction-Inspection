@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 OCCUPANT_LOAD_EXIT_THRESHOLD = 60
 MIN_EXITS_ABOVE_THRESHOLD = 2
@@ -10,7 +10,11 @@ MIN_EXITS_AT_OR_BELOW_THRESHOLD = 1
 class RequiredExitsRule(Rule):
     rule_id = "required-exits"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         rooms = project_data.get("rooms", [])
         exits = project_data.get("exits", [])
 

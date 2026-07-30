@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 MIN_EXIT_CLEAR_WIDTH_MM = 1200.0
 
@@ -8,7 +8,11 @@ MIN_EXIT_CLEAR_WIDTH_MM = 1200.0
 class ExitWidthRule(Rule):
     rule_id = "exit-min-width"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         exits = project_data.get("exits", [])
         results: list[RuleResult] = []
 

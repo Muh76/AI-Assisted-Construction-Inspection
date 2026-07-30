@@ -1,3 +1,4 @@
+from tests.conftest import noop_regulation_clause_lookup
 from app.rules.base import rule_registry
 from app.rules.fire_extinguisher import (
     MAX_FIRE_EXTINGUISHER_TRAVEL_DISTANCE_M,
@@ -30,7 +31,7 @@ def test_fire_extinguisher_rule_passing_and_failing():
         ]
     }
 
-    results = rule.evaluate(project_data)
+    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
 
     assert len(results) == 2
 

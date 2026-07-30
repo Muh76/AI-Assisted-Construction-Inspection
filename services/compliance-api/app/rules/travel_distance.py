@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 # Maximum travel distance in metres (placeholder for sprinklered buildings).
 MAX_TRAVEL_DISTANCE_SPRINKLERED_M = 45.0
@@ -9,7 +9,11 @@ MAX_TRAVEL_DISTANCE_SPRINKLERED_M = 45.0
 class TravelDistanceRule(Rule):
     rule_id = "travel-distance"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         rooms = project_data.get("rooms", [])
         results: list[RuleResult] = []
 

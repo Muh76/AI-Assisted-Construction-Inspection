@@ -1,7 +1,7 @@
 import math
 from typing import Any
 
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 # Square metres of floor area per occupant (placeholder lookup).
 OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON: dict[str, float] = {
@@ -13,7 +13,11 @@ OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON: dict[str, float] = {
 class OccupantLoadRule(Rule):
     rule_id = "occupant-load"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         rooms = project_data.get("rooms", [])
         results: list[RuleResult] = []
 

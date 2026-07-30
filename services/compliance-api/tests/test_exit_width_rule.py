@@ -1,3 +1,4 @@
+from tests.conftest import noop_regulation_clause_lookup
 from app.rules.base import rule_registry
 from app.rules.exit_width import MIN_EXIT_CLEAR_WIDTH_MM, ExitWidthRule
 
@@ -11,7 +12,7 @@ def test_exit_width_rule_passing_and_failing():
         ]
     }
 
-    results = rule.evaluate(project_data)
+    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
 
     assert len(results) == 2
 

@@ -55,7 +55,31 @@ def test_create_door_with_missing_room_returns_404(client):
     assert response.json()["detail"] == "Room not found"
 
 
-def test_project_compliance_endpoint(client):
+def test_project_compliance_endpoint(client, db_session):
+    from app.models import RegulationClause
+
+    db_session.add_all(
+        [
+            RegulationClause(
+                code="OBC",
+                section="3.3.2.4",
+                title="Minimum corridor clear width",
+                description="Corridor width threshold.",
+                threshold_value=1100.0,
+                threshold_unit="mm",
+            ),
+            RegulationClause(
+                code="OBC",
+                section="3.4.7.1",
+                title="Minimum door clear width",
+                description="Door width threshold.",
+                threshold_value=860.0,
+                threshold_unit="mm",
+            ),
+        ]
+    )
+    db_session.commit()
+
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "Compliance Test Project"},
@@ -96,13 +120,41 @@ def test_project_compliance_endpoint(client):
     assert "door-min-width" in rule_ids
     assert "occupant-load" in rule_ids
 
+    corridor_results = [
+        result for result in report["results"] if result["rule_id"] == "corridor-min-width"
+    ]
+    door_results = [
+        result for result in report["results"] if result["rule_id"] == "door-min-width"
+    ]
+    occupant_results = [
+        result for result in report["results"] if result["rule_id"] == "occupant-load"
+    ]
+
+    assert corridor_results[0]["regulation_citation"] == "OBC 3.3.2.4"
+    assert door_results[0]["regulation_citation"] == "OBC 3.4.7.1"
+    assert occupant_results[0]["regulation_citation"] is None
+
 
 def test_project_compliance_not_found(client):
     response = client.get("/api/v1/projects/99999/compliance")
     assert response.status_code == 404
 
 
-def test_project_compliance_export_pdf(client):
+def test_project_compliance_export_pdf(client, db_session):
+    from app.models import RegulationClause
+
+    db_session.add(
+        RegulationClause(
+            code="OBC",
+            section="3.4.7.1",
+            title="Minimum door clear width",
+            description="Door width threshold.",
+            threshold_value=860.0,
+            threshold_unit="mm",
+        )
+    )
+    db_session.commit()
+
     project_id = client.post(
         "/api/v1/projects",
         json={"name": "PDF Export Project"},

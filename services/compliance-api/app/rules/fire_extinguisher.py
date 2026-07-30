@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.models import FireProtectionItemType
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 MAX_FIRE_EXTINGUISHER_TRAVEL_DISTANCE_M = 23.0
 
@@ -9,7 +9,11 @@ MAX_FIRE_EXTINGUISHER_TRAVEL_DISTANCE_M = 23.0
 class FireExtinguisherRule(Rule):
     rule_id = "fire-extinguisher-travel-distance"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         items = project_data.get("fire_protection_items", [])
         results: list[RuleResult] = []
 

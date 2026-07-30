@@ -1,12 +1,16 @@
 from typing import Any
 
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 
 class SprinklerCoverageRule(Rule):
     rule_id = "sprinkler-coverage"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         rooms = project_data.get("rooms", [])
         results: list[RuleResult] = []
 

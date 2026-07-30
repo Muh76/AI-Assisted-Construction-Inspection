@@ -1,5 +1,6 @@
 import math
 
+from tests.conftest import noop_regulation_clause_lookup
 from app.rules.base import rule_registry
 from app.rules.occupant_load import (
     OCCUPANT_LOAD_FACTORS_SQM_PER_PERSON,
@@ -31,7 +32,7 @@ def test_occupant_load_rule_passing_and_failing():
         ]
     }
 
-    results = rule.evaluate(project_data)
+    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
 
     assert len(results) == 2
 
@@ -63,7 +64,8 @@ def test_occupant_load_rule_unknown_category():
                     "occupant_load": 1,
                 }
             ]
-        }
+        },
+        noop_regulation_clause_lookup,
     )
 
     assert len(results) == 1

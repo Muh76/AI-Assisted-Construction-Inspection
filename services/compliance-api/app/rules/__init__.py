@@ -1,4 +1,4 @@
-from app.rules.base import Rule, RuleRegistry, RuleResult, register_rule, rule_registry
+from app.rules.base import Rule, RuleRegistry, RuleResult, RegulationClauseLookup, register_rule, rule_registry
 from app.rules import (  # noqa: F401 — register rules
     corridor_width,
     door_width,
@@ -12,4 +12,11 @@ from app.rules import (  # noqa: F401 — register rules
     travel_distance,
 )
 
-__all__ = ["Rule", "RuleRegistry", "RuleResult", "register_rule", "rule_registry"]
+__all__ = [
+    "Rule",
+    "RuleRegistry",
+    "RuleResult",
+    "RegulationClauseLookup",
+    "register_rule",
+    "rule_registry",
+]

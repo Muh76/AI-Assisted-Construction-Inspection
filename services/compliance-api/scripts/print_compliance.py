@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.db import SessionLocal
 from app.models import Project
 from app.rules.base import rule_registry
-from app.rules.runner import _load_project_data, run_all_rules
+from app.rules.runner import _load_project_data, build_regulation_clause_lookup, run_all_rules
 
 SAMPLE_PROJECT_NAME = "Riverside Office Fit-Out"
 
@@ -35,8 +35,10 @@ def main() -> None:
             print("Failed to load project data.")
             raise SystemExit(1)
 
+        lookup_regulation_clause = build_regulation_clause_lookup(db)
+
         for rule in rule_registry.all():
-            rule.evaluate(project_data)
+            rule.evaluate(project_data, lookup_regulation_clause)
 
         results = run_all_rules(project.id, db)
         print(f"Rule results ({len(results)}):")

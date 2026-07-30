@@ -2,7 +2,7 @@ import re
 from typing import Any
 
 from app.models import FireProtectionItemType
-from app.rules.base import Rule, RuleResult, register_rule
+from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 _RATING_MINUTES_PATTERN = re.compile(r"(\d+)")
 
@@ -19,7 +19,11 @@ def _parse_rating_minutes(rating: str | None) -> int | None:
 class PenetrationsRule(Rule):
     rule_id = "penetration-seal-rating"
 
-    def evaluate(self, project_data: Any) -> list[RuleResult]:
+    def evaluate(
+        self,
+        project_data: Any,
+        lookup_regulation_clause: RegulationClauseLookup,
+    ) -> list[RuleResult]:
         items = project_data.get("fire_protection_items", [])
         results: list[RuleResult] = []
 

@@ -130,6 +130,8 @@ class RuleResultRead(BaseModel):
     passed: bool
     message: str
     evidence: dict[str, Any]
+    regulation_clause_id: int | None = None
+    regulation_citation: str | None = None
 
 
 class ComplianceSummary(BaseModel):

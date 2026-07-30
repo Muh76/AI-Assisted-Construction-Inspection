@@ -1,3 +1,4 @@
+from tests.conftest import noop_regulation_clause_lookup
 from app.rules.base import rule_registry
 from app.rules.required_exits import (
     MIN_EXITS_ABOVE_THRESHOLD,
@@ -17,7 +18,7 @@ def test_required_exits_rule_at_or_below_threshold():
         "exits": [{"id": 1, "location": "North stair"}],
     }
 
-    results = rule.evaluate(project_data)
+    results = rule.evaluate(project_data, noop_regulation_clause_lookup)
 
     assert len(results) == 1
     result = results[0]
@@ -50,8 +51,8 @@ def test_required_exits_rule_above_threshold():
         "exits": [{"id": 1, "location": "North stair"}],
     }
 
-    passing_result = rule.evaluate(passing_data)[0]
-    failing_result = rule.evaluate(failing_data)[0]
+    passing_result = rule.evaluate(passing_data, noop_regulation_clause_lookup)[0]
+    failing_result = rule.evaluate(failing_data, noop_regulation_clause_lookup)[0]
 
     assert passing_result.passed is True
     assert passing_result.evidence["total_occupant_load"] == 65

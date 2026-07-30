@@ -10,6 +10,10 @@ from app.db import Base, get_db
 from app.main import create_app
 
 
+def noop_regulation_clause_lookup(_section: str) -> None:
+    return None
+
+
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     engine = create_engine(
