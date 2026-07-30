@@ -103,6 +103,36 @@ class DoorScheduleConfirmResponse(BaseModel):
     created: list[DoorRead]
 
 
+class RoomSchedulePreviewRow(BaseModel):
+    name: str
+    occupancy_category: str
+    floor_area: float
+    occupant_load: int
+
+
+class RoomSchedulePreviewResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    preview: bool = True
+    rows: list[RoomSchedulePreviewRow]
+
+
+class RoomScheduleConfirmRow(BaseModel):
+    name: str
+    occupancy_category: str
+    floor_area: float
+    occupant_load: int
+
+
+class RoomScheduleConfirmRequest(BaseModel):
+    rows: list[RoomScheduleConfirmRow]
+
+
+class RoomScheduleConfirmResponse(BaseModel):
+    drawing_id: int
+    created: list[RoomRead]
+
+
 class CorridorCreate(BaseModel):
     project_id: int
     clear_width: float
@@ -116,6 +146,23 @@ class CorridorRead(BaseModel):
     project_id: int
     clear_width: float
     length: float
+
+
+class ExitCreate(BaseModel):
+    project_id: int
+    location: str
+    clear_width: float
+    is_required_exit: bool = False
+
+
+class ExitRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    project_id: int
+    location: str
+    clear_width: float
+    is_required_exit: bool
 
 
 class FireProtectionItemCreate(BaseModel):

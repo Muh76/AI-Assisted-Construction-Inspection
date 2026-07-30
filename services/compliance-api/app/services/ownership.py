@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Corridor, Door, Project, Room, User
+from app.models import Corridor, Door, Exit, Project, Room, User
 
 
 def get_owned_project(db: Session, project_id: int, user: User) -> Project:
@@ -44,3 +44,14 @@ def get_owned_corridor(db: Session, corridor_id: int, user: User) -> Corridor:
     if corridor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Corridor not found")
     return corridor
+
+
+def get_owned_exit(db: Session, exit_id: int, user: User) -> Exit:
+    exit_ = db.scalar(
+        select(Exit)
+        .join(Project)
+        .where(Exit.id == exit_id, Project.owner_id == user.id)
+    )
+    if exit_ is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exit not found")
+    return exit_
