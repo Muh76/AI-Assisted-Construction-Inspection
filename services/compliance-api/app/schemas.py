@@ -71,12 +71,6 @@ class CorridorVisionConfirmRequest(BaseModel):
     callouts: list[CorridorVisionConfirmRow]
 
 
-class CorridorVisionConfirmResponse(BaseModel):
-    drawing_id: int
-    page_number: int
-    created: list[CorridorRead]
-
-
 class DoorSchedulePreviewRow(BaseModel):
     door_number: str
     width: float
@@ -183,6 +177,12 @@ class CorridorRead(BaseModel):
     project_id: int
     clear_width: float
     length: float
+
+
+class CorridorVisionConfirmResponse(BaseModel):
+    drawing_id: int
+    page_number: int
+    created: list[CorridorRead]
 
 
 class ExitCreate(BaseModel):
