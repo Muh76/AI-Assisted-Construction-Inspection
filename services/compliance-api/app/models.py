@@ -41,7 +41,11 @@ class Drawing(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
     type: Mapped[DrawingType] = mapped_column(
-        Enum(DrawingType, name="drawing_type"),
+        Enum(
+            DrawingType,
+            name="drawing_type",
+            values_callable=lambda drawing_type: [member.value for member in drawing_type],
+        ),
         nullable=False,
     )
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
@@ -121,7 +125,11 @@ class FireProtectionItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
     item_type: Mapped[FireProtectionItemType] = mapped_column(
-        Enum(FireProtectionItemType, name="fire_protection_item_type"),
+        Enum(
+            FireProtectionItemType,
+            name="fire_protection_item_type",
+            values_callable=lambda item_type: [member.value for member in item_type],
+        ),
         nullable=False,
     )
     location: Mapped[str] = mapped_column(String(255), nullable=False)
