@@ -191,6 +191,8 @@ export default function ProjectDetailPage() {
                 <FireProtectionSection projectId={project.id} />
               ) : activeSection === "Drawings" ? (
                 <DrawingsSection projectId={project.id} />
+              ) : activeSection === "Compliance" ? (
+                <ComplianceSection projectId={project.id} />
               ) : (
                 <>
                   <h2 className="mb-2 text-lg font-medium">{activeSection}</h2>
@@ -1305,6 +1307,183 @@ function DrawingsSection({ projectId }: { projectId: number }) {
       )}
     </>
   );
+}
+
+function ComplianceSection({ projectId }: { projectId: number }) {
+  const [report, setReport] = useState<ComplianceReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchCompliance() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await apiFetch(
+          `/api/v1/projects/${projectId}/compliance`,
+        );
+
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response));
+        }
+
+        const data = (await response.json()) as ComplianceReport;
+        if (!cancelled) {
+          setReport(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load compliance report",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchCompliance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  async function handleDownload() {
+    setError(null);
+    setIsDownloading(true);
+
+    try {
+      const response = await apiFetch(
+        `/api/v1/projects/${projectId}/compliance/export`,
+      );
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      const blob = await response.blob();
+      const filename =
+        parseContentDispositionFilename(
+          response.headers.get("Content-Disposition"),
+        ) ?? `compliance-report-project-${projectId}.pdf`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to download compliance report",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-lg font-medium">Compliance</h2>
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={isDownloading}
+          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {isDownloading ? "Downloading…" : "Download Compliance Report"}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-zinc-600">Loading compliance report…</p>
+      ) : error ? (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      ) : report ? (
+        <>
+          <p className="mb-6 text-sm text-zinc-600">
+            <span className="font-medium text-green-700">
+              {report.summary.passed} passed
+            </span>
+            {" · "}
+            <span className="font-medium text-red-700">
+              {report.summary.failed} failed
+            </span>
+          </p>
+
+          {report.results.length === 0 ? (
+            <p className="text-sm text-zinc-600">No rule results.</p>
+          ) : (
+            <ul className="space-y-4">
+              {report.results.map((result) => (
+                <li
+                  key={result.rule_id}
+                  className="rounded border border-zinc-200 p-4 text-sm"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-medium ${
+                        result.passed
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {result.passed ? "Pass" : "Fail"}
+                    </span>
+                    <span className="font-medium text-zinc-900">
+                      {result.rule_id}
+                    </span>
+                  </div>
+                  <p className="text-zinc-700">{result.message}</p>
+                  {result.regulation_citation ? (
+                    <p className="mt-2 text-zinc-600">
+                      Citation: {result.regulation_citation}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+type ComplianceReport = {
+  project_id: number;
+  generated_at: string;
+  results: {
+    rule_id: string;
+    passed: boolean;
+    message: string;
+    regulation_citation: string | null;
+  }[];
+  summary: {
+    passed: number;
+    failed: number;
+  };
+};
+
+function parseContentDispositionFilename(
+  header: string | null,
+): string | null {
+  if (!header) {
+    return null;
+  }
+
+  const match = header.match(/filename="([^"]+)"/);
+  return match?.[1] ?? null;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
