@@ -1287,13 +1287,13 @@ function DrawingsSection({ projectId }: { projectId: number }) {
               </p>
               <div className="mt-3 flex flex-wrap gap-4">
                 <Link
-                  href={`/projects/${projectId}/drawings/${drawing.id}/rooms`}
+                  href={`/drawings/${drawing.id}/review-rooms`}
                   className="font-medium text-zinc-900 underline"
                 >
                   Review extracted rooms
                 </Link>
                 <Link
-                  href={`/projects/${projectId}/drawings/${drawing.id}/doors`}
+                  href={`/drawings/${drawing.id}/review-doors`}
                   className="font-medium text-zinc-900 underline"
                 >
                   Review extracted doors

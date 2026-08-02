@@ -23,6 +23,7 @@ from app.schemas import (
     DoorRead,
     DrawingExtractResponse,
     DrawingPageRenderResponse,
+    DrawingRead,
     RoomScheduleConfirmRequest,
     RoomScheduleConfirmResponse,
     RoomSchedulePreviewResponse,
@@ -41,6 +42,11 @@ def _get_drawing_or_404(drawing_id: int, db: Session) -> Drawing:
             detail="Drawing not found",
         )
     return drawing
+
+
+@router.get("/{drawing_id}", response_model=DrawingRead)
+def get_drawing(drawing_id: int, db: Session = Depends(get_db)) -> Drawing:
+    return _get_drawing_or_404(drawing_id, db)
 
 
 @router.post(

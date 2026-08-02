@@ -108,6 +108,17 @@ async def upload_regulation_document(
     return document
 
 
+@router.get("/documents", response_model=list[RegulationDocumentRead])
+def list_regulation_documents(
+    db: Session = Depends(get_db),
+) -> list[RegulationDocument]:
+    return list(
+        db.scalars(
+            select(RegulationDocument).order_by(RegulationDocument.uploaded_at.desc())
+        ).all()
+    )
+
+
 @router.post(
     "/documents/{document_id}/extract",
     response_model=RegulationExtractResponse,
