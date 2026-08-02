@@ -68,6 +68,21 @@ def get_project_compliance(
     return build_compliance_report(project_id, db)
 
 
+@router.get(
+    "/{project_id}/drawings",
+    response_model=list[DrawingRead],
+)
+def list_project_drawings(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Drawing]:
+    get_owned_project(db, project_id, current_user)
+    return list(
+        db.scalars(select(Drawing).where(Drawing.project_id == project_id)).all()
+    )
+
+
 @router.post(
     "/{project_id}/drawings",
     response_model=DrawingRead,
