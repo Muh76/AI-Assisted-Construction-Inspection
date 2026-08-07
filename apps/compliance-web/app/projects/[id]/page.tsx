@@ -1166,6 +1166,7 @@ function DrawingsSection({ projectId }: { projectId: number }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     if (!file) {
       setError("Select a PDF file to upload.");
       return;
@@ -1203,7 +1204,7 @@ function DrawingsSection({ projectId }: { projectId: number }) {
       }
 
       setFile(null);
-      event.currentTarget.reset();
+      form.reset();
       await loadDrawings();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload drawing");

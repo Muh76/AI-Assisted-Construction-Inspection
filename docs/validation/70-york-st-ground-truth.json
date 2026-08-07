@@ -1,0 +1,18 @@
+{
+  "doors": [
+    {
+      "door_no": "",
+      "clear_width_mm": null,
+      "fire_rating": ""
+    }
+  ],
+  "rooms": [
+    {
+      "room_no": "",
+      "name": "",
+      "occupancy_category": "",
+      "floor_area": null,
+      "occupant_load": null
+    }
+  ]
+}

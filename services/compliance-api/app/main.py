@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.db import engine
 from app.routers import api_router
@@ -27,6 +29,22 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(OperationalError)
+    async def database_operational_error_handler(
+        _request: Request,
+        exc: OperationalError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": (
+                    "Database connection failed. Check DATABASE_URL in "
+                    "services/compliance-api/.env (Postgres user/password/database)."
+                ),
+                "error": str(exc.orig) if getattr(exc, "orig", None) else str(exc),
+            },
+        )
 
     @app.get("/health")
     def health() -> dict[str, str]:

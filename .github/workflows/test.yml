@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/compliance-api
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: compliance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/compliance
+      JWT_SECRET_KEY: test-jwt-secret-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Run tests
+        run: pytest

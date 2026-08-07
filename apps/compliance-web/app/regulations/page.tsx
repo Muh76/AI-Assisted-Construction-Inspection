@@ -79,6 +79,7 @@ export default function RegulationsPage() {
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     if (!file) {
       setError("Select a PDF file to upload.");
       return;
@@ -108,7 +109,7 @@ export default function RegulationsPage() {
       setCode("");
       setEdition("");
       setFile(null);
-      event.currentTarget.reset();
+      form.reset();
       setSelectedDocumentId(String(document.id));
       await loadDocuments();
     } catch (err) {
