@@ -1,10 +1,15 @@
+import json
 import re
+from pathlib import Path
 from typing import Any
 
 import pdfplumber
 from sqlalchemy.orm import Session
 
+from app.ai.claude_client import call_claude
+from app.config import get_repo_root
 from app.models import Drawing
+from app.parsing.page_image import render_drawing_page
 from app.parsing.raw_extract import _resolve_drawing_path
 
 ROOM_NAME_HEADERS = {
@@ -46,6 +51,31 @@ OCCUPANT_LOAD_HEADERS = {
 }
 
 _NUMBER_PATTERN = re.compile(r"[\d.]+")
+
+ROOM_VISION_PROMPT = """You are analyzing an architectural drawing page that may contain
+a room schedule, zone schedule, or similar table of spaces.
+
+Read the room/zone table from the image and return JSON only (no markdown fences)
+with this exact shape:
+{
+  "rooms": [
+    {
+      "name": "Reception",
+      "occupancy_category": "Office - Reception",
+      "floor_area": 16.54,
+      "occupant_load": 0
+    }
+  ]
+}
+
+Rules:
+- Only include rows you can read with high confidence.
+- name is the room or zone name/label.
+- occupancy_category is the occupancy / use category text as shown.
+- floor_area must be numeric (square metres when available).
+- occupant_load must be an integer occupant count.
+- If no confident room rows are found, return {"rooms": []}.
+"""
 
 
 def _normalize_cell(value: Any) -> str:
@@ -166,6 +196,82 @@ def extract_room_schedule_from_page(page: Any) -> list[dict[str, Any]]:
     return parse_room_schedule_tables(tables)
 
 
+def _strip_markdown_fences(content: str) -> str:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+    return cleaned
+
+
+def _normalize_vision_rooms(raw_rooms: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_rooms, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in raw_rooms:
+        if not isinstance(item, dict):
+            continue
+
+        name = item.get("name")
+        occupancy_category = item.get("occupancy_category")
+        floor_area = item.get("floor_area")
+        occupant_load = item.get("occupant_load")
+
+        if not isinstance(name, str) or not name.strip():
+            continue
+        if not isinstance(occupancy_category, str) or not occupancy_category.strip():
+            continue
+        if not isinstance(floor_area, (int, float)):
+            continue
+        if isinstance(occupant_load, bool) or not isinstance(occupant_load, (int, float)):
+            continue
+
+        normalized.append(
+            {
+                "name": name.strip(),
+                "occupancy_category": occupancy_category.strip(),
+                "floor_area": float(floor_area),
+                "occupant_load": int(round(float(occupant_load))),
+            }
+        )
+
+    return normalized
+
+
+def _parse_vision_response(content: str) -> list[dict[str, Any]]:
+    data = json.loads(_strip_markdown_fences(content))
+    if isinstance(data, dict):
+        rooms = data.get("rooms", [])
+    elif isinstance(data, list):
+        rooms = data
+    else:
+        rooms = []
+    return _normalize_vision_rooms(rooms)
+
+
+def _request_room_schedule_from_image(image_path: Path) -> list[dict[str, Any]]:
+    image_bytes = image_path.read_bytes()
+    content = call_claude(ROOM_VISION_PROMPT, image_bytes=image_bytes)
+    if not content:
+        return []
+    return _parse_vision_response(content)
+
+
+def _extract_room_schedule_via_vision(
+    drawing_id: int,
+    page_number: int,
+    db: Session,
+) -> list[dict[str, Any]]:
+    relative_image_path = render_drawing_page(drawing_id, page_number, db)
+    absolute_image_path = get_repo_root() / relative_image_path
+    return _request_room_schedule_from_image(absolute_image_path)
+
+
 def extract_room_schedule(
     drawing_id: int,
     page_number: int,
@@ -185,4 +291,9 @@ def extract_room_schedule(
                 f"Page number {page_number} is out of range for drawing {drawing_id}"
             )
         page = pdf.pages[page_number - 1]
-        return extract_room_schedule_from_page(page)
+        rows = extract_room_schedule_from_page(page)
+
+    if rows:
+        return rows
+
+    return _extract_room_schedule_via_vision(drawing_id, page_number, db)

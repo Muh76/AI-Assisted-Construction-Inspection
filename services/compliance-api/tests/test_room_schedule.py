@@ -1,6 +1,18 @@
-import pytest
+import json
+from datetime import UTC, datetime
+from io import BytesIO
 
-from app.parsing.room_schedule import parse_room_schedule_table, parse_room_schedule_tables
+import pytest
+from PIL import Image
+from reportlab.pdfgen import canvas
+
+from app.models import Drawing, DrawingType, Project, User
+from app.parsing.room_schedule import (
+    _parse_vision_response,
+    extract_room_schedule,
+    parse_room_schedule_table,
+    parse_room_schedule_tables,
+)
 
 
 @pytest.fixture
@@ -93,3 +105,191 @@ def test_parse_room_schedule_table_skips_invalid_rows():
             "occupant_load": 8,
         },
     ]
+
+
+def test_parse_vision_response_normalizes_rooms():
+    content = json.dumps(
+        {
+            "rooms": [
+                {
+                    "name": "Reception",
+                    "occupancy_category": "Office - Reception",
+                    "floor_area": 16.54,
+                    "occupant_load": 0,
+                },
+                {
+                    "name": "",
+                    "occupancy_category": "Office",
+                    "floor_area": 10.0,
+                    "occupant_load": 1,
+                },
+                {
+                    "name": "Office",
+                    "occupancy_category": "Office - Office Space",
+                    "floor_area": "bad",
+                    "occupant_load": 1,
+                },
+            ]
+        }
+    )
+
+    rooms = _parse_vision_response(content)
+
+    assert rooms == [
+        {
+            "name": "Reception",
+            "occupancy_category": "Office - Reception",
+            "floor_area": 16.54,
+            "occupant_load": 0,
+        }
+    ]
+
+
+def _make_test_pdf() -> bytes:
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.drawString(72, 720, "Room schedule page without extractable tables")
+    pdf.showPage()
+    pdf.save()
+    return buffer.getvalue()
+
+
+def test_extract_room_schedule_falls_back_to_claude_vision(
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    pdf_path = raw_dir / "rooms.pdf"
+    pdf_path.write_bytes(_make_test_pdf())
+
+    monkeypatch.setattr("app.parsing.raw_extract.get_repo_root", lambda: tmp_path)
+    monkeypatch.setattr("app.parsing.room_schedule.get_repo_root", lambda: tmp_path)
+
+    user = User(
+        email="room-vision@example.com",
+        hashed_password="hashed",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    project = Project(name="Room Vision Project", owner_id=user.id)
+    db_session.add(project)
+    db_session.flush()
+
+    drawing = Drawing(
+        project_id=project.id,
+        type=DrawingType.ARCHITECTURAL,
+        file_path="data/raw/rooms.pdf",
+        upload_date=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db_session.add(drawing)
+    db_session.commit()
+    db_session.refresh(drawing)
+
+    def fake_render(drawing_id_arg, page_number, db):
+        output_dir = tmp_path / "data" / "processed" / str(drawing_id_arg)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        image_path = output_dir / f"page_{page_number}.png"
+        Image.new("RGB", (100, 100), color="white").save(image_path, "PNG")
+        return f"data/processed/{drawing_id_arg}/page_{page_number}.png"
+
+    def fake_claude(prompt, image_bytes=None):
+        assert image_bytes is not None
+        assert b"\x89PNG" in image_bytes[:8] or image_bytes.startswith(b"\x89PNG")
+        assert "room" in prompt.lower()
+        return json.dumps(
+            {
+                "rooms": [
+                    {
+                        "name": "Reception",
+                        "occupancy_category": "Office - Reception",
+                        "floor_area": 16.54,
+                        "occupant_load": 0,
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr(
+        "app.parsing.room_schedule.extract_room_schedule_from_page",
+        lambda page: [],
+    )
+    monkeypatch.setattr(
+        "app.parsing.room_schedule.render_drawing_page",
+        fake_render,
+    )
+    monkeypatch.setattr(
+        "app.parsing.room_schedule.call_claude",
+        fake_claude,
+    )
+
+    rows = extract_room_schedule(drawing.id, 1, db_session)
+
+    assert rows == [
+        {
+            "name": "Reception",
+            "occupancy_category": "Office - Reception",
+            "floor_area": 16.54,
+            "occupant_load": 0,
+        }
+    ]
+
+
+def test_extract_room_schedule_skips_vision_when_pdfplumber_succeeds(
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    raw_dir = tmp_path / "data" / "raw"
+    raw_dir.mkdir(parents=True)
+    pdf_path = raw_dir / "rooms.pdf"
+    pdf_path.write_bytes(_make_test_pdf())
+
+    monkeypatch.setattr("app.parsing.raw_extract.get_repo_root", lambda: tmp_path)
+
+    user = User(
+        email="room-pdfplumber@example.com",
+        hashed_password="hashed",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db_session.add(user)
+    db_session.flush()
+    project = Project(name="Room Pdfplumber Project", owner_id=user.id)
+    db_session.add(project)
+    db_session.flush()
+    drawing = Drawing(
+        project_id=project.id,
+        type=DrawingType.ARCHITECTURAL,
+        file_path="data/raw/rooms.pdf",
+        upload_date=datetime.now(UTC).replace(tzinfo=None),
+    )
+    db_session.add(drawing)
+    db_session.commit()
+    db_session.refresh(drawing)
+
+    expected = [
+        {
+            "name": "Reception",
+            "occupancy_category": "B",
+            "floor_area": 42.5,
+            "occupant_load": 5,
+        }
+    ]
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Vision fallback should not run when pdfplumber succeeds")
+
+    monkeypatch.setattr(
+        "app.parsing.room_schedule.extract_room_schedule_from_page",
+        lambda page: expected,
+    )
+    monkeypatch.setattr(
+        "app.parsing.room_schedule._extract_room_schedule_via_vision",
+        fail_if_called,
+    )
+
+    rows = extract_room_schedule(drawing.id, 1, db_session)
+    assert rows == expected
