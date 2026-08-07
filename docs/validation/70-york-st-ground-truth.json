@@ -1,18 +1,35 @@
 {
   "doors": [
-    {
-      "door_no": "",
-      "clear_width_mm": null,
-      "fire_rating": ""
-    }
+    { "door_no": "D-01", "clear_width_mm": 965, "fire_rating": "N/A" },
+    { "door_no": "D-02", "clear_width_mm": 965, "fire_rating": "N/A" },
+    { "door_no": "D-04", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-05", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-06", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-07", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-08", "clear_width_mm": 965, "fire_rating": "N/A" },
+    { "door_no": "D-09", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-10", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-11", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-12", "clear_width_mm": 1054, "fire_rating": "N/A" },
+    { "door_no": "D-13", "clear_width_mm": 965, "fire_rating": "N/A" }
   ],
   "rooms": [
-    {
-      "room_no": "",
-      "name": "",
-      "occupancy_category": "",
-      "floor_area": null,
-      "occupant_load": null
-    }
+    { "room_no": "101", "name": "Reception", "occupancy_category": "Office - Reception", "floor_area": 16.54, "occupant_load": 0 },
+    { "room_no": "102", "name": "Reception Lounge", "occupancy_category": "Office - Reception", "floor_area": 21.93, "occupant_load": 0 },
+    { "room_no": "103", "name": "Conference Room", "occupancy_category": "General - Conference/Meeting Room", "floor_area": 23.41, "occupant_load": 0 },
+    { "room_no": "104", "name": "Private Office", "occupancy_category": "Office - Break Area", "floor_area": 11.52, "occupant_load": 1 },
+    { "room_no": "105", "name": "Private Office", "occupancy_category": "Office - Office Space", "floor_area": 11.52, "occupant_load": 1 },
+    { "room_no": "106", "name": "Huddle Room", "occupancy_category": "General - Conference/Meeting Room", "floor_area": 10.13, "occupant_load": 0 },
+    { "room_no": "107", "name": "Server Room", "occupancy_category": "General - Server Space", "floor_area": 7.06, "occupant_load": 0 },
+    { "room_no": "108", "name": "Kitchen", "occupancy_category": "General - Break Area", "floor_area": 40.69, "occupant_load": 0 },
+    { "room_no": "109", "name": "Workstation", "occupancy_category": "Office - Office Space", "floor_area": 120.98, "occupant_load": 24 },
+    { "room_no": "110", "name": "Reception 2", "occupancy_category": "Office - Reception", "floor_area": 18.02, "occupant_load": 0 },
+    { "room_no": "111", "name": "Huddle Room", "occupancy_category": "General - Conference/Meeting Room", "floor_area": 17.65, "occupant_load": 0 },
+    { "room_no": "112", "name": "Kitchen 2", "occupancy_category": "General - Break Area", "floor_area": 19.32, "occupant_load": 0 },
+    { "room_no": "113", "name": "Server Room", "occupancy_category": "General - Server Space", "floor_area": 3.81, "occupant_load": 0 },
+    { "room_no": "114", "name": "Huddle Room", "occupancy_category": "General - Conference/Meeting Room", "floor_area": 8.64, "occupant_load": 0 },
+    { "room_no": "115", "name": "Private Office", "occupancy_category": "Office - Office Space", "floor_area": 8.55, "occupant_load": 1 },
+    { "room_no": "116", "name": "Private Office", "occupancy_category": "Office - Office Space", "floor_area": 9.29, "occupant_load": 1 },
+    { "room_no": "117", "name": "Workstation", "occupancy_category": "Office - Office Space", "floor_area": 66.15, "occupant_load": 12 }
   ]
 }
