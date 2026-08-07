@@ -29,6 +29,8 @@ FIRE_RATING_HEADERS = {
     "fire rating min",
 }
 
+_HEADER_SCAN_LIMIT = 5
+_BRACKET_MM_PATTERN = re.compile(r"\[(\d+(?:\.\d+)?)\s*mm\]", re.IGNORECASE)
 _WIDTH_PATTERN = re.compile(r"[\d.]+")
 
 
@@ -39,13 +41,22 @@ def _normalize_cell(value: Any) -> str:
 
 
 def _normalize_header(value: Any) -> str:
-    return _normalize_cell(value).lower()
+    text = _normalize_cell(value).lower()
+    return re.sub(r"\s+", " ", text)
+
+
+def _header_matches(header: str, candidates: set[str]) -> bool:
+    return any(candidate in header for candidate in candidates)
 
 
 def _parse_width(value: str) -> float | None:
     if not value:
         return None
-    match = _WIDTH_PATTERN.search(value.replace(",", ""))
+    cleaned = value.replace(",", "")
+    bracket_match = _BRACKET_MM_PATTERN.search(cleaned)
+    if bracket_match is not None:
+        return float(bracket_match.group(1))
+    match = _WIDTH_PATTERN.search(cleaned)
     if match is None:
         return None
     return float(match.group())
@@ -56,11 +67,13 @@ def _find_column_indexes(header_row: list[Any]) -> dict[str, int] | None:
     indexes: dict[str, int] = {}
 
     for index, header in enumerate(normalized_headers):
-        if header in DOOR_NUMBER_HEADERS:
+        if not header:
+            continue
+        if _header_matches(header, DOOR_NUMBER_HEADERS):
             indexes["door_number"] = index
-        elif header in WIDTH_HEADERS:
+        elif _header_matches(header, WIDTH_HEADERS):
             indexes["width"] = index
-        elif header in FIRE_RATING_HEADERS:
+        elif _header_matches(header, FIRE_RATING_HEADERS):
             indexes["fire_rating"] = index
 
     if "door_number" not in indexes or "width" not in indexes:
@@ -73,12 +86,20 @@ def parse_door_schedule_table(table: list[list[Any]]) -> list[dict[str, Any]]:
     if not table:
         return []
 
-    column_indexes = _find_column_indexes(table[0])
-    if column_indexes is None:
+    header_row_index: int | None = None
+    column_indexes: dict[str, int] | None = None
+    for index, row in enumerate(table[:_HEADER_SCAN_LIMIT]):
+        found = _find_column_indexes(row)
+        if found is not None:
+            header_row_index = index
+            column_indexes = found
+            break
+
+    if header_row_index is None or column_indexes is None:
         return []
 
     rows: list[dict[str, Any]] = []
-    for raw_row in table[1:]:
+    for raw_row in table[header_row_index + 1 :]:
         if not raw_row:
             continue
 

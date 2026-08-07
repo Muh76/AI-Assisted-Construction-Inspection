@@ -94,12 +94,55 @@ def test_validate_extraction_prints_json(validation_db_session):
     assert result["page_count"] == 10
     assert result["door_page"] == 2
     assert result["room_page"] == 3
+    assert result["doors_source_pdf"] == str(pdf_path)
+    assert result["rooms_source_pdf"] == str(pdf_path)
     assert len(result["doors"]) == 1
     assert len(result["rooms"]) == 1
 
     dumped = json.dumps(result)
     parsed = json.loads(dumped)
     assert parsed["doors"][0]["door_number"] == "D-1"
+
+
+def test_validate_extraction_uses_separate_doors_and_rooms_pdfs(validation_db_session):
+    _session, doors_pdf = validation_db_session
+    rooms_pdf = doors_pdf.parent / "rooms.pdf"
+    rooms_pdf.write_bytes(_make_test_pdf())
+
+    with patch(
+        "scripts.validate_extraction.extract_door_schedule",
+        return_value=[{"door_number": "D-1", "width": 860.0, "fire_rating": None}],
+    ) as door_extract, patch(
+        "scripts.validate_extraction.extract_room_schedule",
+        return_value=[
+            {
+                "name": "Office",
+                "occupancy_category": "B",
+                "floor_area": 20.0,
+                "occupant_load": 2,
+            }
+        ],
+    ) as room_extract, patch(
+        "scripts.validate_extraction._count_pdf_pages",
+        return_value=4,
+    ):
+        result = validate_extraction(
+            doors_pdf=doors_pdf,
+            rooms_pdf=rooms_pdf,
+            door_page=1,
+            room_page=2,
+        )
+
+    assert result["doors_source_pdf"] == str(doors_pdf)
+    assert result["rooms_source_pdf"] == str(rooms_pdf)
+    assert result["doors_drawing_id"] != result["rooms_drawing_id"]
+    assert "source_pdf" not in result
+    door_extract.assert_called_once()
+    room_extract.assert_called_once()
+    assert door_extract.call_args.args[0] == result["doors_drawing_id"]
+    assert room_extract.call_args.args[0] == result["rooms_drawing_id"]
+    assert door_extract.call_args.args[1] == 1
+    assert room_extract.call_args.args[1] == 2
 
 
 def test_compare_against_ground_truth_counts():

@@ -57,7 +57,7 @@ def _resolve_pdf_path(explicit_path: Path | None) -> Path:
     searched = ", ".join(str(repo_root / path) for path in DEFAULT_PDF_CANDIDATES)
     raise FileNotFoundError(
         "Could not find interior_design.pdf. Checked: "
-        f"{searched}. Pass --pdf to specify the file path."
+        f"{searched}. Pass --pdf, --doors-pdf, or --rooms-pdf to specify the file path."
     )
 
 
@@ -279,10 +279,16 @@ def _get_or_create_validation_project(db, project_name: str, owner) -> Project:
     return project
 
 
-def _upload_drawing(db, project: Project, pdf_path: Path) -> Drawing:
+def _upload_drawing(
+    db,
+    project: Project,
+    pdf_path: Path,
+    *,
+    label: str = "drawing",
+) -> Drawing:
     upload_date = datetime.now(UTC).replace(tzinfo=None)
     timestamp = upload_date.strftime("%Y%m%d_%H%M%S")
-    saved_filename = f"project-{project.id}-{timestamp}.pdf"
+    saved_filename = f"project-{project.id}-{timestamp}-{label}.pdf"
 
     raw_dir = get_data_raw_dir()
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -307,15 +313,25 @@ def _count_pdf_pages(pdf_path: Path) -> int:
 
 def validate_extraction(
     pdf_path: Path | None = None,
+    doors_pdf: Path | None = None,
+    rooms_pdf: Path | None = None,
     door_page: int = 1,
     room_page: int = 1,
     project_name: str = DEFAULT_PROJECT_NAME,
 ) -> dict:
-    source_pdf = _resolve_pdf_path(pdf_path)
-    page_count = _count_pdf_pages(source_pdf)
+    # --doors-pdf / --rooms-pdf win when set; otherwise fall back to --pdf,
+    # then DEFAULT_PDF_CANDIDATES (same as a single-file --pdf run).
+    doors_source_pdf = _resolve_pdf_path(doors_pdf if doors_pdf is not None else pdf_path)
+    rooms_source_pdf = _resolve_pdf_path(rooms_pdf if rooms_pdf is not None else pdf_path)
+    doors_page_count = _count_pdf_pages(doors_source_pdf)
+    rooms_page_count = _count_pdf_pages(rooms_source_pdf)
 
     print(
-        f"Using PDF: {source_pdf} ({page_count} pages)",
+        f"Using doors PDF: {doors_source_pdf} ({doors_page_count} pages)",
+        file=sys.stderr,
+    )
+    print(
+        f"Using rooms PDF: {rooms_source_pdf} ({rooms_page_count} pages)",
         file=sys.stderr,
     )
 
@@ -323,29 +339,45 @@ def validate_extraction(
     try:
         owner = _get_or_create_seed_user(db)
         project = _get_or_create_validation_project(db, project_name, owner)
-        drawing = _upload_drawing(db, project, source_pdf)
+        doors_drawing = _upload_drawing(db, project, doors_source_pdf, label="doors")
+        rooms_drawing = _upload_drawing(db, project, rooms_source_pdf, label="rooms")
         db.commit()
-        db.refresh(drawing)
+        db.refresh(doors_drawing)
+        db.refresh(rooms_drawing)
 
         print(
-            f"Uploaded drawing id={drawing.id} for project id={project.id}",
+            f"Uploaded doors drawing id={doors_drawing.id} and rooms drawing "
+            f"id={rooms_drawing.id} for project id={project.id}",
             file=sys.stderr,
         )
 
-        doors = extract_door_schedule(drawing.id, door_page, db)
-        rooms = extract_room_schedule(drawing.id, room_page, db)
+        doors = extract_door_schedule(doors_drawing.id, door_page, db)
+        rooms = extract_room_schedule(rooms_drawing.id, room_page, db)
 
-        return {
+        result = {
             "project_id": project.id,
-            "drawing_id": drawing.id,
-            "source_pdf": str(source_pdf),
-            "stored_pdf": drawing.file_path,
-            "page_count": page_count,
+            "doors_drawing_id": doors_drawing.id,
+            "rooms_drawing_id": rooms_drawing.id,
+            "doors_source_pdf": str(doors_source_pdf),
+            "rooms_source_pdf": str(rooms_source_pdf),
+            "doors_stored_pdf": doors_drawing.file_path,
+            "rooms_stored_pdf": rooms_drawing.file_path,
+            "doors_page_count": doors_page_count,
+            "rooms_page_count": rooms_page_count,
             "door_page": door_page,
             "room_page": room_page,
             "doors": doors,
             "rooms": rooms,
         }
+
+        # Preserve single-file --pdf response keys when both sources match.
+        if doors_source_pdf == rooms_source_pdf:
+            result["drawing_id"] = doors_drawing.id
+            result["source_pdf"] = str(doors_source_pdf)
+            result["stored_pdf"] = doors_drawing.file_path
+            result["page_count"] = doors_page_count
+
+        return result
     finally:
         db.close()
 
@@ -353,15 +385,37 @@ def validate_extraction(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Upload interior_design.pdf as a drawing, print raw door/room "
-            "schedule extraction output as JSON, and compare against ground truth."
+            "Upload drawing PDF(s), print raw door/room schedule extraction "
+            "output as JSON, and compare against ground truth."
         )
     )
     parser.add_argument(
         "--pdf",
         type=Path,
         default=None,
-        help="Path to the PDF file (defaults to data/raw/70-york-st/interior_design.pdf)",
+        help=(
+            "Single PDF used for both door and room extraction when "
+            "--doors-pdf / --rooms-pdf are omitted "
+            "(defaults to data/raw/70-york-st/interior_design.pdf)"
+        ),
+    )
+    parser.add_argument(
+        "--doors-pdf",
+        type=Path,
+        default=None,
+        help=(
+            "PDF for door schedule extraction "
+            "(falls back to --pdf, then DEFAULT_PDF_CANDIDATES)"
+        ),
+    )
+    parser.add_argument(
+        "--rooms-pdf",
+        type=Path,
+        default=None,
+        help=(
+            "PDF for room schedule extraction "
+            "(falls back to --pdf, then DEFAULT_PDF_CANDIDATES)"
+        ),
     )
     parser.add_argument(
         "--ground-truth",
@@ -393,6 +447,8 @@ def main() -> None:
     args = _build_parser().parse_args()
     result = validate_extraction(
         pdf_path=args.pdf,
+        doors_pdf=args.doors_pdf,
+        rooms_pdf=args.rooms_pdf,
         door_page=args.door_page,
         room_page=args.room_page,
         project_name=args.project_name,

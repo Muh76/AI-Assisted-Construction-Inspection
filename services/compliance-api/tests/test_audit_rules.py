@@ -7,7 +7,6 @@ def test_load_seed_todo_sections_matches_seed_script():
 
     assert sections == frozenset(
         {
-            "3.3.2.4",
             "3.4.7.1",
             "3.4.7.2",
             "3.4.2.7",

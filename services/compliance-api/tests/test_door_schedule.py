@@ -69,3 +69,27 @@ def test_parse_door_schedule_table_skips_invalid_rows():
     assert rows == [
         {"door_number": "D-201", "width": 800.0, "fire_rating": "60 min"},
     ]
+
+
+def test_parse_door_schedule_table_real_schedule_shape():
+    table = [
+        ["DOOR SCHEDULE", "", "", ""],
+        [
+            "DOOR\nNUMBER",
+            "DOOR SIZE\nWIDTH (W) X HEIGHT (H)",
+            "FIRE\nRATING",
+            "NOTES",
+        ],
+        [
+            "D-02",
+            "(2) 3'-2\" x 8'-0\"\n(2) [965mm] X [2438mm]",
+            "N/A",
+            "",
+        ],
+    ]
+
+    rows = parse_door_schedule_table(table)
+
+    assert rows == [
+        {"door_number": "D-02", "width": 965.0, "fire_rating": "N/A"},
+    ]

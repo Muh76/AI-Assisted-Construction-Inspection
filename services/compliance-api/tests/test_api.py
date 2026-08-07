@@ -77,7 +77,7 @@ def test_project_compliance_endpoint(client, db_session, auth_headers):
         [
             RegulationClause(
                 code="OBC",
-                section="3.3.2.4",
+                section="3.3.1.9",
                 title="Minimum corridor clear width",
                 description="Corridor width threshold.",
                 threshold_value=1100.0,
@@ -152,7 +152,7 @@ def test_project_compliance_endpoint(client, db_session, auth_headers):
         result for result in report["results"] if result["rule_id"] == "occupant-load"
     ]
 
-    assert corridor_results[0]["regulation_citation"] == "OBC 3.3.2.4"
+    assert corridor_results[0]["regulation_citation"] == "OBC 3.3.1.9"
     assert door_results[0]["regulation_citation"] == "OBC 3.4.7.1"
     assert occupant_results[0]["regulation_citation"] is None
 
