@@ -11,6 +11,7 @@ DEFAULT_DATABASE_URL = (
 DEFAULT_JWT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 DEFAULT_OPENAI_VISION_MODEL = "gpt-4o-mini"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 
 
 def get_database_url() -> str:
@@ -54,3 +55,14 @@ def get_openai_api_key() -> str | None:
 
 def get_openai_vision_model() -> str:
     return os.getenv("OPENAI_VISION_MODEL", DEFAULT_OPENAI_VISION_MODEL)
+
+
+def get_anthropic_api_key() -> str:
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY environment variable is not set")
+    return api_key
+
+
+def get_anthropic_model() -> str:
+    return os.getenv("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL)
