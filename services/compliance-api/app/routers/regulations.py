@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.config import get_data_regulations_dir
 from app.db import get_db
 from app.models import RegulationClause, RegulationDocument, RegulationText
-from app.parsing.clause_extract import extract_candidate_clauses
+from app.parsing.clause_extract import extract_candidate_clauses, refine_candidate_clauses
 from app.parsing.regulation_text import extract_regulation_pages
 from app.schemas import (
     RegulationClauseConfirmRequest,
@@ -228,9 +228,10 @@ def preview_parsed_clauses(
     _get_document_or_404(document_id, db)
     text_pages = _get_document_text_pages(document_id, db)
     candidates = extract_candidate_clauses(text_pages)
+    refined = refine_candidate_clauses(candidates)
 
     return RegulationClausePreviewResponse(
         document_id=document_id,
         preview=True,
-        clauses=[RegulationClausePreviewRow.model_validate(clause) for clause in candidates],
+        clauses=[RegulationClausePreviewRow.model_validate(clause) for clause in refined],
     )

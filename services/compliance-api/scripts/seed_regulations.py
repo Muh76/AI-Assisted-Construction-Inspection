@@ -35,8 +35,7 @@ class RegulationClauseSeed:
 REGULATION_CLAUSE_SEEDS: tuple[RegulationClauseSeed, ...] = (
     RegulationClauseSeed(
         code="OBC",
-        # TODO: Verify exact OBC corridor clear-width citation.
-        section="3.3.2.4",
+        section="3.3.1.9",
         title="Minimum corridor clear width",
         description=(
             "Corridors serving as means of egress must provide a minimum clear "

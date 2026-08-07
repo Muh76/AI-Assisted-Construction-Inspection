@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
@@ -49,11 +50,37 @@ def test_preview_parsed_clauses(
     auth_headers,
 ):
     document_id = regulation_document_with_text.id
+    refined = [
+        {
+            "section": "3.4.7.1",
+            "text": "Door clear width\nDoors shall have a minimum clear width of 860 mm.",
+            "page_number": 1,
+            "is_regulation_clause": True,
+            "title": "Door clear width",
+            "threshold_value": 860.0,
+            "threshold_unit": "mm",
+            "claude_confidence_note": "States a clear minimum clear-width requirement.",
+        },
+        {
+            "section": "3.4.7.2",
+            "text": "Exit clear width\nExits shall have a minimum clear width of 900 mm.",
+            "page_number": 1,
+            "is_regulation_clause": True,
+            "title": "Exit clear width",
+            "threshold_value": 900.0,
+            "threshold_unit": "mm",
+            "claude_confidence_note": "States a clear exit clear-width requirement.",
+        },
+    ]
 
-    response = client.post(
-        f"/api/v1/regulations/documents/{document_id}/parse-clauses",
-        headers=auth_headers,
-    )
+    with patch(
+        "app.routers.regulations.refine_candidate_clauses",
+        return_value=refined,
+    ) as mock_refine:
+        response = client.post(
+            f"/api/v1/regulations/documents/{document_id}/parse-clauses",
+            headers=auth_headers,
+        )
 
     assert response.status_code == 200
     body = response.json()
@@ -63,7 +90,17 @@ def test_preview_parsed_clauses(
     assert body["clauses"][0]["section"] == "3.4.7.1"
     assert "Door clear width" in body["clauses"][0]["text"]
     assert body["clauses"][0]["page_number"] == 1
+    assert body["clauses"][0]["is_regulation_clause"] is True
+    assert body["clauses"][0]["title"] == "Door clear width"
+    assert body["clauses"][0]["threshold_value"] == 860.0
+    assert body["clauses"][0]["threshold_unit"] == "mm"
+    assert (
+        body["clauses"][0]["claude_confidence_note"]
+        == "States a clear minimum clear-width requirement."
+    )
     assert body["clauses"][1]["section"] == "3.4.7.2"
+    assert mock_refine.call_count == 1
+    assert len(mock_refine.call_args.args[0]) == 2
 
 
 def test_preview_parsed_clauses_document_not_found(client, auth_headers):

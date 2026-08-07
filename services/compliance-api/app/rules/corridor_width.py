@@ -3,7 +3,7 @@ from typing import Any
 from app.rules.base import RegulationClauseLookup, Rule, RuleResult, register_rule
 
 MIN_CORRIDOR_CLEAR_WIDTH_MM = 1100.0
-REGULATION_CLAUSE_SECTION = "3.3.2.4"
+REGULATION_CLAUSE_SECTION = "3.3.1.9"
 
 
 class CorridorWidthRule(Rule):

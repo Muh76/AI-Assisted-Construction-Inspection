@@ -265,6 +265,11 @@ class RegulationClausePreviewRow(BaseModel):
     section: str
     text: str
     page_number: int
+    is_regulation_clause: bool
+    title: str | None = None
+    threshold_value: float | None = None
+    threshold_unit: str | None = None
+    claude_confidence_note: str | None = None
 
 
 class RegulationClausePreviewResponse(BaseModel):

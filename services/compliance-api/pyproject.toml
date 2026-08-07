@@ -31,6 +31,7 @@ audit-rules = "scripts.audit_rules:main"
 validate-extraction = "scripts.validate_extraction:main"
 full-pipeline-check = "scripts.full_pipeline_check:main"
 inspect-extraction = "scripts.inspect_extraction:main"
+ingest-known-clauses = "scripts.ingest_known_clauses:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
